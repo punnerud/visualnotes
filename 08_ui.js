@@ -366,6 +366,235 @@ function setupStripDrag(el) {
   el.addEventListener('dragstart', e => e.preventDefault());
 }
 
+/* ---------------- Paneler ---------------- */
+function openSheet(id) { $(id).hidden = false; }
+function closeSheet(id) { $(id).hidden = true; }
+function switchRow(labelKey, subKey, on, onToggle) {
+  const row = document.createElement('div');
+  row.className = 'row';
+  row.innerHTML = `<label>${esc(T(labelKey))}${subKey ? `<span class="sub">${esc(T(subKey))}</span>` : ''}</label>`;
+  const b = document.createElement('button');
+  b.className = 'switch' + (on ? ' on' : '');
+  b.setAttribute('role', 'switch'); b.setAttribute('aria-checked', on ? 'true' : 'false');
+  b.addEventListener('click', () => {
+    const v = !b.classList.contains('on');
+    b.classList.toggle('on', v); b.setAttribute('aria-checked', v ? 'true' : 'false');
+    onToggle(v);
+  });
+  row.appendChild(b);
+  return row;
+}
+function segRow(labelKey, options, value, onPick, subKey) {
+  const row = document.createElement('div');
+  row.className = 'row';
+  row.innerHTML = `<label>${esc(T(labelKey))}` +
+    (subKey ? `<span class="sub">${esc(T(subKey))}</span>` : '') + `</label>`;
+  const seg = document.createElement('div');
+  seg.className = 'seg';
+  options.forEach(o => {
+    const b = document.createElement('button');
+    b.textContent = o.label;
+    b.className = o.value === value ? 'on' : '';
+    b.addEventListener('click', () => onPick(o.value));
+    seg.appendChild(b);
+  });
+  row.appendChild(seg);
+  return row;
+}
+function rangeRow(labelKey, min, max, step, value, fmtFn, onInput) {
+  const row = document.createElement('div');
+  row.className = 'row';
+  row.innerHTML = `<label>${esc(T(labelKey))}<span class="sub" data-v>${esc(fmtFn(value))}</span></label>`;
+  const inp = document.createElement('input');
+  inp.type = 'range'; inp.min = min; inp.max = max; inp.step = step; inp.value = value;
+  inp.addEventListener('input', () => {
+    const v = parseFloat(inp.value);
+    row.querySelector('[data-v]').textContent = fmtFn(v);
+    onInput(v);
+  });
+  row.appendChild(inp);
+  return row;
+}
+function renderSettings() {
+  const b = $('setBody');
+  b.innerHTML = '';
+  $('setTitle').textContent = T('ui.settings');
+
+  b.appendChild(segRow('ui.language', LANG_ORDER.map(l => ({ value: l, label: T('meta.name', null) && I18N[l] ? I18N[l].meta.name : l })), state.lang,
+    v => { state.lang = v; saveState(); rebuildAll(); renderSettings(); }));
+
+  // Instrument: gruppe -> familie -> variant
+  const ins = curInstr();
+  const gRow = document.createElement('div');
+  gRow.className = 'row';
+  gRow.innerHTML = `<label>${esc(T('ui.instrument'))}</label>`;
+  const wrap = document.createElement('div');
+  wrap.className = 'seg';
+  const famSel = document.createElement('select');
+  FAMILIES.forEach(f => {
+    const og = famSel.querySelector(`optgroup[data-g="${f.group}"]`) || (() => {
+      const g = document.createElement('optgroup');
+      g.label = T('instrumentGroups.' + f.group); g.dataset.g = f.group; famSel.appendChild(g); return g;
+    })();
+    const o = document.createElement('option');
+    o.value = f.id; o.textContent = T('families.' + f.id) || f.id;
+    if (f.id === ins.family) o.selected = true;
+    og.appendChild(o);
+  });
+  famSel.addEventListener('change', () => {
+    const f = FAMILY_BY_ID[famSel.value];
+    setInstrument(f.std); renderSettings();
+  });
+  const varSel = document.createElement('select');
+  const fam = FAMILY_BY_ID[ins.family];
+  fam.members.forEach(id => {
+    const o = document.createElement('option');
+    o.value = id; o.textContent = instrName(id);
+    if (id === ins.id) o.selected = true;
+    varSel.appendChild(o);
+  });
+  varSel.addEventListener('change', () => { setInstrument(varSel.value); renderSettings(); });
+  wrap.appendChild(famSel);
+  if (fam.members.length > 1) wrap.appendChild(varSel);
+  gRow.appendChild(wrap);
+  b.appendChild(gRow);
+
+  if (ins.family === 'recorder') {
+    b.appendChild(segRow('ui.recorderSystem', [
+      { value: false, label: T('ui.baroque') }, { value: true, label: T('ui.german') },
+    ], state.recorderGerman, v => { state.recorderGerman = v; saveState(); rebuildAll(); renderSettings(); }));
+  }
+  b.appendChild(segRow('ui.direction', [
+    { value: 'auto', label: T('ui.dirAuto') },
+    { value: 'h', label: T('ui.dirHoriz') },
+    { value: 'v', label: T('ui.dirVert') },
+  ], state.dir, v => { state.dir = v; saveState(); rebuildAll(); renderSettings(); syncUrl(); },
+     state.dir === 'auto' ? 'ui.dirAutoSub' : null));
+
+  b.appendChild(segRow('ui.noteNames', [
+    { value: 'native', label: T('ui.nativeNames') }, { value: 'intl', label: T('ui.intlNames') },
+  ], state.naming, v => { state.naming = v; saveState(); rebuildAll(); renderSettings(); }));
+
+  if (ins.letters || ins.semis) {
+    b.appendChild(segRow('ui.pitchView', [
+      { value: 'written', label: T('ui.writtenPitch') }, { value: 'concert', label: T('ui.concertPitch') },
+    ], state.pitchMode, v => { state.pitchMode = v; saveState(); rebuildAll(); renderSettings(); syncUrl(); }));
+  }
+  b.appendChild(rangeRow('ui.tempo', BPM_MIN, BPM_MAX, 1, state.bpm, v => v + ' BPM', applyTempo));
+  b.appendChild(switchRow('ui.autoAdvance', 'ui.autoAdvanceSub', state.auto, v => { state.auto = v; saveState(); syncUrl(); }));
+  b.appendChild(switchRow('ui.metronome', null, state.metronome, v => { state.metronome = v; saveState(); syncUrl(); }));
+  b.appendChild(switchRow('ui.toneSound', null, state.tone, v => { state.tone = v; saveState(); syncUrl(); }));
+  b.appendChild(switchRow('ui.countIn', null, state.countIn > 0, v => { state.countIn = v ? 4 : 0; saveState(); syncUrl(); }));
+  b.appendChild(rangeRow('ui.air', 0, 1.6, 0.1, state.air, v => Math.round(v * 100) + ' %', v => { state.air = v; saveState(); renderStrip(); go(state.cur, true); }));
+  b.appendChild(switchRow('ui.showFing', null, state.showFing, v => { state.showFing = v; saveState(); rebuildAll(); }));
+  b.appendChild(switchRow('ui.showBars', null, state.showBars, v => { state.showBars = v; saveState(); rebuildAll(); }));
+  b.appendChild(switchRow('ui.showOct', null, state.showOct, v => { state.showOct = v; saveState(); rebuildAll(); }));
+
+  const tr = document.createElement('div');
+  tr.className = 'row';
+  tr.innerHTML = `<label>${esc(T('ui.transpose'))}<span class="sub">${state.transpose > 0 ? '+' : ''}${state.transpose} ${esc(T('ui.semitones'))}</span></label>`;
+  const seg = document.createElement('div'); seg.className = 'seg';
+  [-12, -1, 0, 1, 12].forEach(d => {
+    const btn = document.createElement('button');
+    btn.textContent = d === 0 ? '0' : (d > 0 ? '+' + d : String(d));
+    btn.addEventListener('click', () => {
+      stopIfPlaying();
+      state.transpose = d === 0 ? 0 : clamp(state.transpose + d, -24, 24);
+      state.transposeLocked = d !== 0;
+      if (d === 0) autoOctave();
+      saveState(); rebuildAll(); renderSettings(); syncUrl();
+    });
+    seg.appendChild(btn);
+  });
+  tr.appendChild(seg); b.appendChild(tr);
+
+  const about = document.createElement('p');
+  about.className = 'hint';
+  about.innerHTML = T('ui.about');
+  b.appendChild(about);
+}
+function renderSongs() {
+  $('songsTitle').textContent = T('ui.songs');
+  const list = $('songList');
+  list.innerHTML = '';
+  SONGS.forEach(s => {
+    const b = document.createElement('button');
+    b.className = 'songitem' + (state.songId === s.id ? ' on' : '');
+    b.innerHTML = `<b>${esc(s.title[state.lang] || s.title.en)}</b><span>${esc(T('songs.src.' + s.src))} · ${esc(s.ts)} · ${s.bpm} BPM</span>`;
+    b.addEventListener('click', () => { loadSong(s.id); closeSheet('songs'); });
+    list.appendChild(b);
+  });
+  $('songsNote').textContent = T('ui.songsNote');
+}
+function renderShare() {
+  $('shareTitle').textContent = T('ui.share');
+  const b = $('shareBody');
+  b.innerHTML = '';
+  const url = buildUrl();
+  const box = document.createElement('div');
+  box.className = 'urlbox'; box.textContent = url;
+  b.appendChild(box);
+  const row = document.createElement('div');
+  row.className = 'btnrow';
+  const copy = document.createElement('button');
+  copy.className = 'gold'; copy.textContent = T('ui.copyLink');
+  copy.addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(url); copy.textContent = T('ui.copied'); }
+    catch (e) { copy.textContent = T('ui.copyFail'); }
+    setTimeout(() => { copy.textContent = T('ui.copyLink'); }, 1600);
+  });
+  row.appendChild(copy);
+  b.appendChild(row);
+
+  const h = document.createElement('div');
+  h.className = 'row';
+  h.innerHTML = `<label>${esc(T('ui.editNotes'))}<span class="sub">${esc(T('ui.editNotesSub'))}</span></label>`;
+  b.appendChild(h);
+  const ta = document.createElement('textarea');
+  ta.value = state.sourceText;
+  ta.spellcheck = false;
+  b.appendChild(ta);
+  const ti = document.createElement('div');
+  ti.className = 'row';
+  ti.innerHTML = `<label>${esc(T('ui.songTitle'))}</label>`;
+  const tin = document.createElement('input');
+  tin.type = 'text'; tin.value = state.title;
+  ti.appendChild(tin); b.appendChild(ti);
+  const tsRow = document.createElement('div');
+  tsRow.className = 'row';
+  tsRow.innerHTML = `<label>${esc(T('ui.timeSig'))}</label>`;
+  const tsIn = document.createElement('input');
+  tsIn.type = 'text'; tsIn.value = state.ts; tsIn.style.width = '90px';
+  tsRow.appendChild(tsIn); b.appendChild(tsRow);
+
+  const row2 = document.createElement('div');
+  row2.className = 'btnrow';
+  const apply = document.createElement('button');
+  apply.className = 'gold'; apply.textContent = T('ui.apply');
+  apply.addEventListener('click', () => {
+    state.title = tin.value.trim();
+    state.ts = /^\d+\s*\/\s*\d+$/.test(tsIn.value.trim()) ? tsIn.value.trim().replace(/\s/g, '') : state.ts;
+    setSource(ta.value);
+    renderShare();
+  });
+  row2.appendChild(apply);
+  const help = document.createElement('button');
+  help.textContent = T('ui.formatHelp');
+  help.addEventListener('click', () => { helpEl.hidden = !helpEl.hidden; });
+  row2.appendChild(help);
+  b.appendChild(row2);
+  const helpEl = document.createElement('p');
+  helpEl.className = 'hint'; helpEl.hidden = true;
+  helpEl.style.textAlign = 'left';
+  helpEl.innerHTML = T('ui.formatHelpText');
+  b.appendChild(helpEl);
+  const err = document.createElement('p');
+  err.className = 'warn';
+  err.textContent = state.parseErrors.length ? T('ui.parseErrors', { list: state.parseErrors.slice(0, 8).join(' ') }) : '';
+  err.hidden = !state.parseErrors.length;
+  b.appendChild(err);
+}
+
 /* ---------------- AI-prompt ----------------
    Én ferdig prompt: brukerens ønske på valgt språk, og beskrivelsen av
    notasjonen på engelsk, som modellene håndterer best. */

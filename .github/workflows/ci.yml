@@ -25,6 +25,7 @@ jobs:
           node test_url.js
           node test_fingering.js
           node test_songs.js
+          node test_bundle.js
 
       - name: index.html må være i synk med kildene
         run: |
