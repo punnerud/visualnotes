@@ -93,6 +93,8 @@
   "ai": "AI-prompt",
   "aiCopy": "Kopiera prompt",
   "aiHint": "Klistra in i ChatGPT, Claude eller Gemini. Du kan bifoga en bild eller en PDF med noterna i samma meddelande. Beskrivningen av notationen är på engelska — den förstår modellerna bäst.",
+  "aiInclude": "Utgå från den här melodin:",
+  "aiIncludeBtn": "♪ Ta med melodin som visas nu",
   "aiIntro": "Du är en musikassistent som gör övningslänkar till visualnotes.\n\nMin uppgift:\n{wish}\n\nHar jag bifogat en bild eller en PDF med noter ska du läsa melodin därifrån.\nBer jag om en melodi: svara med en enda URL och ingenting annat — ingen förklaring, ingen kodruta.\nFrågar jag om något annat, svara kort på svenska och bifoga en länk om det hjälper.\nÄr något oklart, välj det mest sannolika.",
   "aiPlaceholder": "T.ex. ”gör melodin till Broder Jakob i 3/4” eller ”läs noterna i PDF:en jag bifogar”",
   "aiWish": "Vad vill du ha?",

@@ -93,6 +93,8 @@
   "ai": "AI-prompt",
   "aiCopy": "Kopiér prompt",
   "aiHint": "Indsæt i ChatGPT, Claude eller Gemini. Du kan vedhæfte et billede eller en PDF med noderne i samme besked. Beskrivelsen af notationen er på engelsk — den forstår modellerne bedst.",
+  "aiInclude": "Tag udgangspunkt i denne melodi:",
+  "aiIncludeBtn": "♪ Tag melodien, der vises nu, med",
   "aiIntro": "Du er en musikassistent, der laver øvelseslinks til visualnotes.\n\nMin opgave:\n{wish}\n\nHar jeg vedhæftet et billede eller en PDF med noder, skal du læse melodien derfra.\nBeder jeg om en melodi: svar med ét enkelt URL og intet andet — ingen forklaring, ingen kodeblok.\nSpørger jeg om noget andet, svar kort på dansk, og vedlæg et link hvis det hjælper.\nEr noget uklart, så vælg det mest sandsynlige.",
   "aiPlaceholder": "F.eks. »lav melodien til Mester Jakob i 3/4« eller »læs noderne i den PDF, jeg vedhæfter«",
   "aiWish": "Hvad vil du have?",

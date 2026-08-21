@@ -110,7 +110,9 @@ Ligger sangen utenfor instrumentets grepskart, flyttes den automatisk i hele okt
 
 ## Prompt til en LLM
 
-Enklest: trykk 🤖 øverst i appen, skriv hva du vil ha, og kopier den ferdige prompten. Den er på
+Enklest: trykk 🤖 øverst i appen, skriv hva du vil ha, og kopier den ferdige prompten. Knappen
+«♪ Ta med melodien som vises nå» limer inn tonene, tittelen, instrumentet og tempoet som er lastet, så
+du kan be om endringer på den — «gjør den i 3/4», «transponer til D-dur», «legg til andre vers». Den er på
 språket du har valgt, tar med hvilket instrument, tempo og taktart som er valgt nå, og legger ved hele
 notasjonsbeskrivelsen på engelsk. Lim den inn hos ChatGPT, Claude eller Gemini — gjerne sammen med et
 bilde eller en PDF av noten — og du får en ferdig lenke tilbake.

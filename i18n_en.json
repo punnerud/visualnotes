@@ -93,6 +93,8 @@
   "ai": "AI prompt",
   "aiCopy": "Copy prompt",
   "aiHint": "Paste it into ChatGPT, Claude or Gemini. You can attach an image or a PDF of the score in the same message. The notation reference is in English, which the models handle best.",
+  "aiInclude": "Start from this melody:",
+  "aiIncludeBtn": "♪ Include the melody shown now",
   "aiIntro": "You are a music assistant who builds practice links for visualnotes.\n\nMy task:\n{wish}\n\nIf I attached an image or a PDF of sheet music, read the melody from it.\nIf I ask for a melody: answer with a single URL and nothing else — no explanation, no code block.\nIf I ask about something else, answer briefly and add a link if it helps.\nIf anything is unclear, pick the most likely reading.",
   "aiPlaceholder": "E.g. \"make the melody for Frère Jacques in 3/4\" or \"read the notes in the PDF I attach\"",
   "aiWish": "What do you want?",

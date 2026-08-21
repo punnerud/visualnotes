@@ -550,6 +550,37 @@ Instrument ids:
 ${instrCatalog()}`;
   return intro + '\n\n' + spec + '\n';
 }
+/* Melodien som vises nå, i samme form som URL-en bruker */
+function currentSongSnippet() {
+  const ins = curInstr();
+  const bits = ['i=' + ins.id, 'ts=' + state.ts, 'bpm=' + state.bpm, 'l=' + state.lang];
+  if (state.transpose) bits.push('k=' + state.transpose);
+  if (state.pitchMode !== 'written') bits.push('p=c');
+  return T('ui.aiInclude') + '\n' +
+    's=' + state.sourceText + '\n' +
+    (state.title ? 't=' + state.title + '\n' : '') +
+    bits.join('  ');
+}
+/* Setter melodien inn øverst i ønskefeltet, og bytter ut en tidligere innsatt blokk */
+function insertSongSnippet(ta) {
+  const label = T('ui.aiInclude');
+  let rest = ta.value;
+  const at = rest.indexOf(label);
+  if (at >= 0) {
+    const tail = rest.slice(at);
+    const end = tail.indexOf('\n\n');
+    rest = (rest.slice(0, at) + (end >= 0 ? tail.slice(end + 2) : '')).replace(/^\s+/, '');
+  }
+  ta.value = currentSongSnippet() + '\n\n' + rest;
+  ta.dispatchEvent(new Event('input', { bubbles: true }));
+  ta.focus();
+  ta.setSelectionRange(ta.value.length, ta.value.length);
+}
+/* Feltet vokser med innholdet, opp til et tak */
+function autoGrow(ta) {
+  ta.style.height = 'auto';
+  ta.style.height = Math.min(Math.max(ta.scrollHeight, 64), 200) + 'px';
+}
 function renderAi() {
   $('aiTitle').textContent = T('ui.ai');
   const b = $('aiBody');
@@ -557,6 +588,10 @@ function renderAi() {
   const h = document.createElement('div');
   h.className = 'row';
   h.innerHTML = `<label>${esc(T('ui.aiWish'))}</label>`;
+  const inc = document.createElement('button');
+  inc.className = 'addbtn';
+  inc.textContent = T('ui.aiIncludeBtn');
+  h.appendChild(inc);
   b.appendChild(h);
   const ta = document.createElement('textarea');
   ta.placeholder = T('ui.aiPlaceholder');
@@ -568,8 +603,9 @@ function renderAi() {
   const box = document.createElement('div');
   box.className = 'urlbox prompt';
   b.appendChild(box);
-  const paint = () => { state.aiWish = ta.value; box.textContent = buildPrompt(ta.value); };
+  const paint = () => { state.aiWish = ta.value; autoGrow(ta); box.textContent = buildPrompt(ta.value); };
   ta.addEventListener('input', paint);
+  inc.addEventListener('click', () => insertSongSnippet(ta));
   paint();
 
   const row = document.createElement('div');
