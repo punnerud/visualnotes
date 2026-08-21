@@ -217,20 +217,26 @@ function setLanes(beatPos, transition) {
   vLaneStyle(transition, vOffset(beatPos));
   sLaneStyle(transition, sOffset(beatPos));
 }
+/* Tangentene hopper én tone om gangen, mens notebåndet glir uavbrutt.
+   Under avspilling får derfor bare den fallende banen ny posisjon her —
+   rører vi båndet, avbryter vi glidingen ved hver eneste tone. */
 function positionStripLane(instant) {
   if (!$('vlane')) return;
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  setLanes(tlStart[state.cur] || 0, (instant || reduce) ? 'none' : 'transform .18s ease-out');
+  const t = (instant || reduce) ? 'none' : 'transform .18s ease-out';
+  const beat = tlStart[state.cur] || 0;
+  vLaneStyle(t, vOffset(beat));
+  if (!player.playing) sLaneStyle(t, sOffset(beat));
 }
 function glideStrip(from, leadSecs) {
   if (!$('vlane')) return;
   const startBeats = tlStart[from] || 0;
   const secs = (tlTotal - startBeats) * 60 / state.bpm;
   setLanes(startBeats, 'none');
-  void $('vlane').offsetHeight;
+  void $('slane').offsetWidth;
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  // Like lange lineære overganger holder de to banene i takt
-  setLanes(tlTotal, `transform ${secs.toFixed(3)}s linear ${Math.max(0, leadSecs || 0).toFixed(3)}s`);
+  // Én sammenhengende, lineær bevegelse for notene ut sangen
+  sLaneStyle(`transform ${secs.toFixed(3)}s linear ${Math.max(0, leadSecs || 0).toFixed(3)}s`, sOffset(tlTotal));
 }
 function freezeOne(id) {
   const lane = $(id);

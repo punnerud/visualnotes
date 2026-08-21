@@ -41,12 +41,13 @@ Instrumenter med grepdiagram på høykant — trompet, blokkfløyte, saksofon, f
 viser tonene på rekke som glir sidelengs. For **piano, klokkespill, xylofon og trombone** ligger
 diagrammet på tvers, og da deles visningen i to baner som krysser hverandre på midten:
 
-- **Grepene faller nedover** som i Guitar Hero. Kommende toner ligger over, banen glir nedover i takt
-  med musikken, og høyden på hver blokk er nøyaktig proporsjonal med varigheten. Spilte toner glir bak
-  notebåndet og ut nederst.
+- **Grepene faller nedover** som i Guitar Hero. Kommende toner ligger over, og banen flytter seg ett
+  hakk ned for hver tone, så du ser tydelig når neste grep treffer. Høyden på hver blokk er nøyaktig
+  proporsjonal med varigheten. Spilte toner glir bak notebåndet og ut nederst.
 - **Notene glir sidelengs** i et bånd tvers over skjermen — de kommer inn fra høyre, passerer midten og
-  går ut til venstre, slik noter leses. Notelinjene henger sammen mellom tonene, så det blir én
-  sammenhengende notelinje med taktstreker.
+  går ut til venstre, slik noter leses. Her er bevegelsen én sammenhengende, jevn gliding gjennom hele
+  sangen, så notebildet flyter som musikken. Notelinjene henger sammen mellom tonene, så det blir én
+  lang notelinje med taktstreker.
 
 Krysset midt i bildet er tonen som spilles nå: den står samtidig på landingslinja over og med notehodet
 på spillehodet i båndet.
