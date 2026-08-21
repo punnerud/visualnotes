@@ -67,6 +67,7 @@
   .note .name small{font-size:13px;opacity:.55;font-weight:700}
   .note .staffwrap{width:100%;display:flex;justify-content:center}
   .note .staffwrap svg{width:100%;height:auto;max-width:150px}
+  .strip .note .staffwrap{display:none}      /* notene bor i båndet — utskrift beholder sin */
   .note .lyric{font-size:12px;font-weight:700;color:#6b6250;min-height:14px}
   .note .fingtxt{font-size:11px;font-weight:800;color:#6b6250;letter-spacing:.06em}
   .note.rest .name{color:var(--muted)}
@@ -81,7 +82,6 @@
             mask-image:linear-gradient(180deg,transparent,#000 9%);
   }
   .strip.vert.grabbing{cursor:grabbing;user-select:none}
-  .strip.vert + .timeline{display:none}
   .vlane{
     position:absolute;left:0;right:0;bottom:0;
     display:flex;flex-direction:column-reverse;align-items:center;
@@ -97,28 +97,32 @@
   .strip.vert .note .fingwrap{flex:0 0 auto;width:auto;height:auto;max-height:86px;max-width:54%}
   .strip.vert .note .fingwrap svg{height:auto;width:auto;max-height:86px;max-width:100%}
   .strip.vert .note .name{margin:0 16px;font-size:26px}
-  .strip.vert .note .staffwrap{display:none}   /* notene bor i båndet under */
   .strip.vert .note .lyric{margin-left:auto;padding-right:4px}
   .strip.vert .note.short .fingwrap{display:none}
   .strip.vert .note.short .name{font-size:18px;margin:0 12px}
   .strip.vert .note.tiny .name{font-size:14px}
   .strip.vert .note.barstart{border-bottom-color:rgba(28,23,18,.45)}
   .strip.vert .note.phrasestart{border-bottom:3px solid rgba(28,23,18,.65)}
-  /* Notebåndet: går tvers over ved landingslinja, og notene glir mot venstre.
-     Tangentkortene faller bak båndet og kommer ut dempet under. */
+  /* ---------- Notebåndet ----------
+     Én sammenhengende notelinje som glir jevnt mot venstre. Ligger i vanlig flyt
+     under kortene i vannrett modus, og som et bånd tvers over ved landingslinja
+     i fallende modus, der kortene faller bak det. */
   .sband{
-    position:absolute;left:0;right:0;height:94px;z-index:2;overflow:hidden;
+    position:relative;height:94px;overflow:visible;
     background:var(--paper);
     border-top:3px solid var(--gold);border-bottom:1px solid rgba(28,23,18,.25);
-    box-shadow:0 10px 26px rgba(0,0,0,.45);
   }
+  .sband.inflow{margin:0 0 10px}
+  .sband.overlay{position:absolute;left:0;right:0;z-index:2;box-shadow:0 10px 26px rgba(0,0,0,.45)}
+  .swin{position:absolute;inset:0;overflow:hidden}
   .slane{position:absolute;left:0;top:8px;height:78px;display:flex;will-change:transform}
-  .sseg{flex:0 0 auto;height:78px;cursor:pointer}
-  .sseg.on{background:rgba(242,178,52,.22)}
+  .sseg{flex:0 0 auto;height:78px;cursor:pointer;transition:opacity .15s ease}
+  .sseg.done{opacity:.42}
+  .sseg.on{opacity:1;background:rgba(242,178,52,.22)}
   .sseg:hover{background:rgba(242,178,52,.12)}
   .sseg svg{display:block}
   .splayhead{
-    position:absolute;left:50%;width:2px;margin-left:-1px;height:108px;z-index:3;
+    position:absolute;left:50%;top:-14px;bottom:0;width:2px;margin-left:-1px;z-index:3;
     background:var(--gold);border-radius:2px;pointer-events:none;
     box-shadow:0 0 10px rgba(242,178,52,.9);
   }
@@ -153,37 +157,6 @@
     padding:10px 14px calc(12px + env(safe-area-inset-bottom));
     background:var(--navy-deep);border-top:1px solid rgba(251,247,238,.12);
     box-shadow:0 -8px 20px rgba(0,0,0,.3);
-  }
-  /* Tidslinje: glir mot venstre under notene, bredden viser hvor lenge tonen varer */
-  .timeline{
-    position:relative;height:23px;margin:0 0 10px;overflow:hidden;
-    -webkit-mask-image:linear-gradient(90deg,transparent,#000 7%,#000 93%,transparent);
-            mask-image:linear-gradient(90deg,transparent,#000 7%,#000 93%,transparent);
-  }
-  /* Ingen mellomrom mellom bitene: da er posisjonen nøyaktig proporsjonal med tiden.
-     Skillet mellom toner tegnes som en innfelt strek inni biten. */
-  .tlane{position:absolute;left:0;top:6px;height:17px;display:flex;will-change:transform}
-  .pseg{
-    flex:0 0 auto;border-radius:2px;cursor:pointer;
-    background:rgba(251,247,238,.20);transition:background .15s ease;
-    box-shadow:inset -2px 0 0 var(--navy-deep);
-  }
-  .pseg.rest{background:rgba(251,247,238,.07)}
-  .pseg:hover{background:rgba(251,247,238,.45)}
-  .pseg.barstart{box-shadow:inset -2px 0 0 var(--navy-deep),inset 3px 0 0 rgba(251,247,238,.55)}
-  .pseg.phrasestart{box-shadow:inset -2px 0 0 var(--navy-deep),inset 3px 0 0 rgba(251,247,238,.3)}
-  .pseg.done{background:rgba(242,178,52,.45)}
-  .pseg.done.rest{background:rgba(242,178,52,.18)}
-  .pseg.on{background:var(--gold);box-shadow:inset -2px 0 0 var(--navy-deep),0 0 10px rgba(242,178,52,.75)}
-  .playhead{
-    position:absolute;left:50%;top:0;bottom:0;width:2px;margin-left:-1px;
-    background:var(--paper);border-radius:2px;pointer-events:none;
-    box-shadow:0 0 9px rgba(251,247,238,.85);
-  }
-  .playhead::before{
-    content:"";position:absolute;left:-4px;top:0;
-    border-left:5px solid transparent;border-right:5px solid transparent;
-    border-top:7px solid var(--paper);
   }
   .crow{display:flex;align-items:center;justify-content:center;gap:10px}
   .tempo{display:inline-flex;align-items:center;gap:4px;padding:4px;
@@ -298,7 +271,7 @@
     .strip{padding-left:calc(50vw - 54px);padding-right:calc(50vw - 54px)}
     .nav{padding:13px 16px;font-size:15px}
   }
-  @media (prefers-reduced-motion: reduce){ .note,.nav,.switch::after,.pseg{transition:none} }
-  @media print{ .timeline{display:none} }
+  @media (prefers-reduced-motion: reduce){ .note,.nav,.switch::after,.sseg{transition:none} }
+  @media print{ .sband{display:none} }
 </style>
 </head>

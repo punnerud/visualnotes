@@ -97,7 +97,6 @@ function rebuildAll() {
   state.events = markBars(state.events, state.ts, state.upbeat);
   computeBeatIndex();
   renderStrip();
-  renderProgress();
   renderLegend();
   updateTempoBar();
   go(state.cur, true);
@@ -178,7 +177,6 @@ function syncUrl() {
 }
 
 /* ---------------- Avspilling ---------------- */
-function freezeLanes() { freezeTimeline(); freezeStrip(); }
 function stopIfPlaying() { if (player.playing) { stopPlayback(); freezeLanes(); updatePlayBtn(); } }
 function updatePlayBtn() {
   const b = $('playBtn');
@@ -201,8 +199,8 @@ function beginPlayback(from, countIn) {
   updatePlayBtn();
   if (ok) {
     const lead = AC ? player.t0 - AC.currentTime : 0;
-    if (curDir() === 'v') glideStrip(from || 0, lead);
-    else glideTimeline(from || 0, lead);
+    glideBand(from || 0, lead);
+    if (curDir() === 'v') positionStripLane(true);
   }
   return ok;
 }
@@ -300,7 +298,8 @@ function init() {
   window.addEventListener('resize', () => {
     if (player.playing) return;
     if (curDir() === 'v') positionStripLane(true);
-    else { centerCard(cards[state.cur], true); syncTimeline(true); }
+    else centerCard(cards[state.cur], true);
+    positionBand(true);
   });
   setupStripDrag($('strip'));
 

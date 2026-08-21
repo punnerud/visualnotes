@@ -103,7 +103,8 @@ ok(missing.length === 0, 'kalles uten å finnes: ' + missing.join(', '));
 /* Funksjoner som må være der — hele UI-et henger på dem */
 const REQUIRED = ['$', 'esc', 'clamp', 'T', 'openSheet', 'closeSheet', 'switchRow', 'segRow', 'rangeRow',
   'renderSettings', 'renderSongs', 'renderShare', 'renderAi', 'renderPrint', 'renderStrip',
-  'renderProgress', 'renderLegend', 'makeCard', 'go', 'init', 'buildUrl', 'setSource', 'loadSong',
+  'renderStaffBand', 'renderLegend', 'instrName', 'updateHeader', 'paintBand', 'positionBand',
+  'glideBand', 'makeCard', 'go', 'init', 'buildUrl', 'setSource', 'loadSong',
   'setInstrument', 'playPause', 'applyTempo', 'updateTempoBar', 'setupStripDrag', 'buildPrompt'];
 REQUIRED.forEach(f => {
   const n = f.replace('$', '\\$');
@@ -116,7 +117,7 @@ const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
 const ids = new Set();
 src.replace(/\$\('([A-Za-z][\w]*)'\)/g, (m, id) => { ids.add(id); return m; });
 const noHtml = [...ids].filter(id => html.indexOf('id="' + id + '"') < 0 && html.indexOf("id='" + id + "'") < 0)
-  .filter(id => ['vlane', 'slane'].indexOf(id) < 0);      // lages av skriptet
+  .filter(id => ['vlane'].indexOf(id) < 0);               // lages av skriptet
 ok(noHtml.length === 0, 'mangler i markupen: ' + noHtml.join(', '));
 
 done('test_bundle');

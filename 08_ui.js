@@ -82,6 +82,9 @@ function renderStrip() {
   const strip = $('strip');
   const vert = curDir() === 'v';
   strip.classList.toggle('vert', vert);
+  // Båndet kan ligge inne i stripen fra forrige tegning — ta det ut før vi tømmer
+  const band = $('sband');
+  if (band && band.parentNode) band.parentNode.removeChild(band);
   strip.innerHTML = '';
   cards = [];
   let outCount = 0;
@@ -92,19 +95,15 @@ function renderStrip() {
     const lane = document.createElement('div');
     lane.className = 'vlane'; lane.id = 'vlane';
     strip.appendChild(lane);
-    // Notebåndet krysser tvers over ved landingslinja: notene leses vannrett
-    const band = document.createElement('div');
-    band.className = 'sband';
-    band.style.top = (V_PLAYHEAD * 100).toFixed(1) + '%';
-    const slane = document.createElement('div');
-    slane.className = 'slane'; slane.id = 'slane';
-    band.appendChild(slane);
-    strip.appendChild(band);
-    const ph = document.createElement('div');
-    ph.className = 'splayhead';
-    ph.style.top = 'calc(' + (V_PLAYHEAD * 100).toFixed(1) + '% - 14px)';
-    strip.appendChild(ph);
     host = lane;
+    // Båndet krysser tvers over ved landingslinja, og kortene faller bak det
+    band.className = 'sband overlay';
+    band.style.top = (V_PLAYHEAD * 100).toFixed(1) + '%';
+    strip.appendChild(band);
+  } else {
+    band.className = 'sband inflow';
+    band.style.top = '';
+    strip.parentNode.insertBefore(band, strip.nextSibling);
   }
   const ppb = ppbV();
   state.events.forEach((e, i) => {
@@ -128,7 +127,7 @@ function renderStrip() {
     host.appendChild(el);
     cards.push(el);
   });
-  if (vert) renderStaffBand();
+  renderStaffBand();
   const warn = $('warn');
   if (outCount) { warn.hidden = false; warn.textContent = T('ui.outOfRange', { n: outCount, instr: instrName(ins.id) }); }
   else warn.hidden = true;
@@ -152,10 +151,10 @@ function go(i, instant) {
   $('pos').textContent = state.cur + 1;
   $('prev').disabled = state.cur === 0;
   $('next').disabled = state.cur === state.events.length - 1;
-  paintProgress();
-  sSegs.forEach((el, j) => el.classList.toggle('on', j === state.cur));
+  paintBand();
   if (curDir() === 'v') positionStripLane(instant);
   else centerCard(cards[state.cur], instant);
+  if (!player.playing) positionBand(instant);
 }
 
 /* ---------------- Loddrett bane ----------------
@@ -163,7 +162,7 @@ function go(i, instant) {
    bevegelse, slik at tonene faller nedover i takt med musikken. */
 const V_PLAYHEAD = 0.62;              // landingslinja, andel ned i vinduet
 const S_HEAD = 13;                    // notehodets avstand fra segmentets venstrekant
-let vY = 0, sSegs = [];
+let vY = 0, sSegs = [], beatStart = [], beatTotal = 0;
 function ppbV() { return 60 + state.air * 50; }
 function ppbS() { return 56 + state.air * 40; }
 
@@ -186,9 +185,11 @@ function renderStaffBand() {
     lane.appendChild(el);
     return el;
   });
+  paintBand();
+  positionBand(true);
 }
 function sOffset(beatPos) {
-  const w = $('strip').clientWidth || 1;
+  const w = ($('sband') && $('sband').clientWidth) || 1;   // båndets egen bredde, uansett plassering
   return w / 2 - beatPos * ppbS() - S_HEAD;
 }
 function sLaneStyle(transition, x) {
@@ -196,6 +197,26 @@ function sLaneStyle(transition, x) {
   if (!lane) return;
   lane.style.transition = transition;
   lane.style.transform = 'translateX(' + x.toFixed(1) + 'px)';
+}
+function paintBand() {
+  sSegs.forEach((el, j) => {
+    el.classList.toggle('on', j === state.cur);
+    el.classList.toggle('done', j < state.cur);
+  });
+}
+function positionBand(instant) {
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  sLaneStyle((instant || reduce) ? 'none' : 'transform .18s ease-out', sOffset(beatStart[state.cur] || 0));
+}
+/* Én sammenhengende, lineær bevegelse ut sangen. Røres ikke igjen mens den spilles. */
+function glideBand(from, leadSecs) {
+  if (!sSegs.length) return;
+  const startBeats = beatStart[from] || 0;
+  const secs = (beatTotal - startBeats) * 60 / state.bpm;
+  sLaneStyle('none', sOffset(startBeats));
+  void $('slane').offsetWidth;
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  sLaneStyle(`transform ${secs.toFixed(3)}s linear ${Math.max(0, leadSecs || 0).toFixed(3)}s`, sOffset(beatTotal));
 }
 function vOffset(beatPos) {
   const h = $('strip').clientHeight || 1;
@@ -220,23 +241,11 @@ function setLanes(beatPos, transition) {
 /* Tangentene hopper én tone om gangen, mens notebåndet glir uavbrutt.
    Under avspilling får derfor bare den fallende banen ny posisjon her —
    rører vi båndet, avbryter vi glidingen ved hver eneste tone. */
+/* Tangentene hopper én tone om gangen; notebåndet glir for seg selv. */
 function positionStripLane(instant) {
   if (!$('vlane')) return;
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const t = (instant || reduce) ? 'none' : 'transform .18s ease-out';
-  const beat = tlStart[state.cur] || 0;
-  vLaneStyle(t, vOffset(beat));
-  if (!player.playing) sLaneStyle(t, sOffset(beat));
-}
-function glideStrip(from, leadSecs) {
-  if (!$('vlane')) return;
-  const startBeats = tlStart[from] || 0;
-  const secs = (tlTotal - startBeats) * 60 / state.bpm;
-  setLanes(startBeats, 'none');
-  void $('slane').offsetWidth;
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  // Én sammenhengende, lineær bevegelse for notene ut sangen
-  sLaneStyle(`transform ${secs.toFixed(3)}s linear ${Math.max(0, leadSecs || 0).toFixed(3)}s`, sOffset(tlTotal));
+  vLaneStyle((instant || reduce) ? 'none' : 'transform .18s ease-out', vOffset(beatStart[state.cur] || 0));
 }
 function freezeOne(id) {
   const lane = $(id);
@@ -248,86 +257,27 @@ function freezeOne(id) {
   const nums = m.match(/matrix\(([^)]+)\)/);
   return nums ? nums[1].split(',') : null;
 }
-function freezeStrip() {
+function freezeLanes() {
   const v = freezeOne('vlane');
   if (v) vY = parseFloat(v[5]);
   freezeOne('slane');
 }
 /* Etter dra eller hjul: hopp til tonen banen står på */
 function snapStripLane() {
-  if (!$('vlane') || !tlStart.length) return;
+  if (!$('vlane') || !beatStart.length) return;
   const b = beatAtOffset(vY);
   let idx = 0;
-  for (let i = 0; i < tlStart.length; i++) if (tlStart[i] <= b + 1e-6) idx = i;
+  for (let i = 0; i < beatStart.length; i++) if (beatStart[i] <= b + 1e-6) idx = i;
   go(clamp(idx, 0, state.events.length - 1));
 }
 
 /* Tidslinje: én bit per tone der bredden er proporsjonal med varigheten.
    Banen glir mot venstre mens sangen spilles, og spillehodet står stille i midten. */
-const TL_PPB = 30;                 // piksler per taktslag
-let pSegs = [], tlStart = [], tlTotal = 0;
-/* Starttidspunkt i taktslag for hver tone. Brukes av både den loddrette
-   banen og tidslinja, så den må regnes ut før begge tegnes. */
+/* Starttidspunkt i taktslag for hver tone. Brukes av både den fallende banen
+   og notebåndet, så den må regnes ut før begge tegnes. */
 function computeBeatIndex() {
-  tlStart = []; tlTotal = 0;
-  state.events.forEach(e => { tlStart.push(tlTotal); tlTotal += e.beats; });
-}
-function renderProgress() {
-  const lane = $('tlane');
-  lane.innerHTML = '';
-  pSegs = state.events.map((e, i) => {
-    const b = document.createElement('div');
-    b.className = 'pseg' + (e.rest ? ' rest' : '');
-    b.style.width = (e.beats * TL_PPB).toFixed(2) + 'px';
-    if (e.bar && state.showBars) b.classList.add('barstart');
-    else if (e.phrase) b.classList.add('phrasestart');
-    const w = e.rest ? T('ui.rest') : dispNote(writtenOf(e));
-    b.title = `${i + 1}. ${w} · ${(+e.beats.toFixed(3))}`;
-    b.addEventListener('click', () => { stopIfPlaying(); go(i); });
-    lane.appendChild(b);
-    return b;
-  });
-  syncTimeline(true);
-}
-/* Hvor banen må stå for at et gitt punkt i sangen skal ligge under spillehodet */
-function tlOffset(beatPos) {
-  const t = $('timeline');
-  return (t.clientWidth / 2) - beatPos * TL_PPB;
-}
-function laneStyle(transition, x) {
-  const lane = $('tlane');
-  lane.style.transition = transition;
-  lane.style.transform = 'translateX(' + x.toFixed(1) + 'px)';
-}
-/* Setter banen til tonen man står på. Kalles når man blar, ikke under avspilling. */
-function syncTimeline(instant) {
-  if (!pSegs.length) return;
-  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  laneStyle((instant || reduce) ? 'none' : 'transform .18s ease-out', tlOffset(tlStart[state.cur] || 0));
-}
-/* Sammenhengende gliding fra en tone og ut sangen, med samme forsinkelse som lyden. */
-function glideTimeline(from, leadSecs) {
-  if (!pSegs.length) return;
-  const startBeats = tlStart[from] || 0;
-  const secs = (tlTotal - startBeats) * 60 / state.bpm;
-  laneStyle('none', tlOffset(startBeats));
-  void $('tlane').offsetWidth;                 // tvinger omtegning før ny animasjon
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  laneStyle(`transform ${secs.toFixed(3)}s linear ${Math.max(0, leadSecs || 0).toFixed(3)}s`, tlOffset(tlTotal));
-}
-/* Fryser banen der den er akkurat nå */
-function freezeTimeline() {
-  const lane = $('tlane');
-  const m = getComputedStyle(lane).transform;
-  lane.style.transition = 'none';
-  if (m && m !== 'none') lane.style.transform = m;
-}
-function paintProgress() {
-  pSegs.forEach((b, j) => {
-    b.classList.toggle('done', j < state.cur);
-    b.classList.toggle('on', j === state.cur);
-  });
-  if (!player.playing) syncTimeline(false);
+  beatStart = []; beatTotal = 0;
+  state.events.forEach(e => { beatStart.push(beatTotal); beatTotal += e.beats; });
 }
 
 function instrName(id) { return T('instruments.' + id) || id; }
@@ -363,8 +313,6 @@ function renderLegend() {
   $('hint').textContent = T('ui.hint');
 }
 
-/* Dra tonerekka sidelengs med musa, og bruk hjulet til å bla vannrett.
-   Berøring scroller allerede av seg selv, så vi rører bare mus og penn. */
 function setupStripDrag(el) {
   let down = false, moved = false, pid = null, start = 0, base = 0;
   let justDragged = false, vertical = false, snapTimer = null;

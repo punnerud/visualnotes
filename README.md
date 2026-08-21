@@ -30,27 +30,25 @@ speiles i URL-en, så lenken i adressefeltet er alltid den du kan dele.
 tallet kan du skrive inn et nøyaktig tempo. `↺` ved siden av setter det tilbake til melodiens eget.
 Endrer du tempo mens den spiller, fortsetter den i det nye tempoet fra tonen du står på.
 ▶ spiller alltid fra første tone. Tonerekka kan dras sidelengs med musa, og hjulet blar vannrett.
-Rett under notene ligger en **tidslinje** med én bit per tone, der bredden er nøyaktig proporsjonal med
-hvor lenge tonen varer — så du ser hvor lang neste tone er før du kommer dit. Under avspilling glir hele
-linja mot venstre i takt med musikken, mens spillehodet står stille midt under tonen som spilles. Trykk
-på en bit for å hoppe dit.
+Rett under kortene ligger **notebåndet**: én sammenhengende notelinje med taktstreker og pauser, der
+bredden på hver tone er nøyaktig proporsjonal med hvor lenge den varer — så du ser hvor lang neste tone
+er før du kommer dit. Under avspilling glir båndet jevnt mot venstre gjennom hele sangen, mens
+spillehodet står stille på midten, rett under kortet som spilles. Kortene med grep hopper én tone om
+gangen, så du ser tydelig når neste grep treffer, mens notebildet flyter som musikken. Spilte toner
+dempes, og du kan trykke på en tone i båndet for å hoppe dit.
 
 ### Retning
 
 Instrumenter med grepdiagram på høykant — trompet, blokkfløyte, saksofon, fløyte, klarinett, strykere —
-viser tonene på rekke som glir sidelengs. For **piano, klokkespill, xylofon og trombone** ligger
-diagrammet på tvers, og da deles visningen i to baner som krysser hverandre på midten:
+viser grepene på rekke som glir sidelengs, med notebåndet under.
 
-- **Grepene faller nedover** som i Guitar Hero. Kommende toner ligger over, og banen flytter seg ett
-  hakk ned for hver tone, så du ser tydelig når neste grep treffer. Høyden på hver blokk er nøyaktig
-  proporsjonal med varigheten. Spilte toner glir bak notebåndet og ut nederst.
-- **Notene glir sidelengs** i et bånd tvers over skjermen — de kommer inn fra høyre, passerer midten og
-  går ut til venstre, slik noter leses. Her er bevegelsen én sammenhengende, jevn gliding gjennom hele
-  sangen, så notebildet flyter som musikken. Notelinjene henger sammen mellom tonene, så det blir én
-  lang notelinje med taktstreker.
+For **piano, klokkespill, xylofon og trombone** ligger diagrammet på tvers. Da faller grepene i stedet
+nedover som i Guitar Hero — kommende toner ligger over, høyden på hver blokk er proporsjonal med
+varigheten, og spilte toner glir bak båndet og ut nederst — mens notebåndet krysser tvers over ved
+landingslinja. Krysset midt i bildet er tonen som spilles nå: den står samtidig på landingslinja over
+og med notehodet på spillehodet i båndet.
 
-Krysset midt i bildet er tonen som spilles nå: den står samtidig på landingslinja over og med notehodet
-på spillehodet i båndet.
+I begge tilfeller er det samme notebånd, og notene leses vannrett slik de skal.
 
 Standarden følger instrumentet, men kan overstyres i innstillingene eller med `dir=h` / `dir=v`. I
 fallende modus er piltast opp neste tone og ned forrige, og banen kan dras med musa eller fingeren.
