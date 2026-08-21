@@ -17,6 +17,7 @@
   html,body{height:100%}
   body{
     min-height:100dvh;display:flex;flex-direction:column;
+    overscroll-behavior:none;
     background:linear-gradient(180deg,var(--navy) 0%,var(--navy-deep) 100%);
     color:var(--paper);
     font-family:ui-rounded,"SF Pro Rounded","Nunito","Trebuchet MS",system-ui,-apple-system,sans-serif;
@@ -2017,13 +2018,50 @@ function setupBandDrag(el) {
     selectOnly(i);                             // merk tonen, men la linja ligge
     if (curDir() !== 'v') centerCard(cards[i], true);
   };
+  /* Berøring håndteres med touch-hendelser, ikke pointer. touchmove og touchend
+     går alltid til elementet der touchstart skjedde, og et preventDefault der
+     hindrer at Safari overtar gesten som sidescrolling midt i et dra. */
+  let tId = null;
+  el.addEventListener('touchstart', e => {
+    const t = e.changedTouches[0];
+    tId = t.identifier; startX = t.clientX; base = sX; moved = false; lastIdx = -1;
+    e.stopPropagation();
+  }, { passive: true });
+  el.addEventListener('touchmove', e => {
+    let t = null;
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      if (e.changedTouches[i].identifier === tId) t = e.changedTouches[i];
+    }
+    if (t) {
+      const dx = t.clientX - startX;
+      if (!moved && Math.abs(dx) >= 5) {
+        moved = true;
+        el.classList.add('grabbing');
+        stopIfPlaying();
+      }
+      if (moved) follow(beatAt(base + dx));
+    }
+    e.preventDefault();
+    e.stopPropagation();
+  }, { passive: false });
+  const touchEnd = () => {
+    if (moved) dragEndAt = performance.now();
+    moved = false; tId = null;
+    el.classList.remove('grabbing');
+  };
+  el.addEventListener('touchend', touchEnd);
+  el.addEventListener('touchcancel', touchEnd);
+
   el.addEventListener('pointerdown', e => {
+    if (e.pointerType === 'touch') return;              // tatt av touch-grenen
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     down = true; moved = false; pid = e.pointerId;
     startX = e.clientX; base = sX; lastIdx = -1;
+    try { el.setPointerCapture(e.pointerId); } catch (err) { /* ignorer */ }
     e.stopPropagation();
   });
   el.addEventListener('pointermove', e => {
+    if (e.pointerType === 'touch') return;
     if (!down || e.pointerId !== pid) return;
     e.stopPropagation();
     const dx = e.clientX - startX;
@@ -2032,7 +2070,6 @@ function setupBandDrag(el) {
       moved = true;
       el.classList.add('grabbing');
       stopIfPlaying();
-      try { el.setPointerCapture(pid); } catch (err) { /* ignorer */ }
     }
     follow(beatAt(base + dx));
     e.preventDefault();
@@ -2069,16 +2106,44 @@ function setupBandDrag(el) {
 function setupStripDrag(el) {
   let down = false, moved = false, pid = null, start = 0, base = 0;
   let dragEndAt = -1e9, vertical = false, snapTimer = null;
+  let tId = null;
+  el.addEventListener('touchstart', e => {
+    if (curDir() !== 'v') return;                       // vannrett ruller selv
+    const t = e.changedTouches[0];
+    tId = t.identifier; start = t.clientY; base = vY; moved = false;
+  }, { passive: true });
+  el.addEventListener('touchmove', e => {
+    if (curDir() !== 'v' || tId === null) return;
+    let t = null;
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      if (e.changedTouches[i].identifier === tId) t = e.changedTouches[i];
+    }
+    if (t) {
+      const d = t.clientY - start;
+      if (!moved && Math.abs(d) >= 5) { moved = true; el.classList.add('grabbing'); stopIfPlaying(); }
+      if (moved) setLanes(indexAtOffset(base + d), 'none');
+    }
+    e.preventDefault();
+  }, { passive: false });
+  const touchEnd = () => {
+    if (tId === null) return;
+    if (moved) { dragEndAt = performance.now(); snapStripLane(); }
+    moved = false; tId = null;
+    el.classList.remove('grabbing');
+  };
+  el.addEventListener('touchend', touchEnd);
+  el.addEventListener('touchcancel', touchEnd);
+
   el.addEventListener('pointerdown', e => {
+    if (e.pointerType === 'touch') return;              // tatt av touch-grenen
     vertical = curDir() === 'v';
-    // Vannrett har egen rulling for berøring; loddrett må håndtere alt selv
-    if (!vertical && e.pointerType !== 'mouse' && e.pointerType !== 'pen') return;
-    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    if (e.button !== 0) return;
     down = true; moved = false; pid = e.pointerId;
     start = vertical ? e.clientY : e.clientX;
     base = vertical ? vY : el.scrollLeft;
   });
   el.addEventListener('pointermove', e => {
+    if (e.pointerType === 'touch') return;
     if (!down || e.pointerId !== pid) return;
     const d = (vertical ? e.clientY : e.clientX) - start;
     if (!moved) {
