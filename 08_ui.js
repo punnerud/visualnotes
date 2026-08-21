@@ -6,6 +6,8 @@ function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '
 function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
 
 function curInstr() { return INSTR_BY_ID[state.instrId] || INSTR_BY_ID.tromp_bb; }
+/* 'h' = tonene glir sidelengs, 'v' = de faller nedover. Auto følger instrumentet. */
+function curDir() { return state.dir === 'h' || state.dir === 'v' ? state.dir : defaultDirection(curInstr()); }
 /* Tonen slik den skal leses på valgt instrument.
    state.pitchMode = 'written': tokenene ER det spilleren leser (standard).
    state.pitchMode = 'concert': tokenene er klingende, og transponeres til instrumentet. */
@@ -50,14 +52,14 @@ function makeCard(e, i, opts) {
     if (wm < ins.lo || wm > ins.hi) outOfRange = true;
   }
   const width = cardWidth(e, kind);
-  el.style.setProperty('--w', width + 'px');
+  if (!o.vert) el.style.setProperty('--w', width + 'px');
   if (!state.showFing || e.rest) el.classList.add('nofing');
   if (e.rest) el.classList.add('rest');
   if (outOfRange) el.classList.add('out');
 
   const name = e.rest ? '–'
     : esc(dispNote(w)) + (state.showOct ? `<small>${w.oct}</small>` : '');
-  const staff = staffSVG(e.rest ? null : w, e.dur, e.dot, ins.clef, Math.min(width - 8, 150));
+  const staff = staffSVG(e.rest ? null : w, e.dur, e.dot, ins.clef, o.vert ? 150 : Math.min(width - 8, 150));
   const lyric = (state.words && state.words[i]) ? esc(state.words[i]) : '';
   el.innerHTML =
     (state.showFing ? `<div class="fingwrap">${e.rest ? '' : fingHtml}</div>` : '') +
@@ -78,19 +80,44 @@ function makeCard(e, i, opts) {
 let cards = [];
 function renderStrip() {
   const strip = $('strip');
+  const vert = curDir() === 'v';
+  strip.classList.toggle('vert', vert);
   strip.innerHTML = '';
   cards = [];
   let outCount = 0;
   const ins = curInstr();
+  let host = strip;
+  if (vert) {
+    // Tida går nedenfra og opp: banen er column-reverse, så tone 0 ligger nederst
+    const lane = document.createElement('div');
+    lane.className = 'vlane'; lane.id = 'vlane';
+    strip.appendChild(lane);
+    const ph = document.createElement('div');
+    ph.className = 'vplayhead';
+    ph.style.top = (V_PLAYHEAD * 100).toFixed(1) + '%';
+    strip.appendChild(ph);
+    host = lane;
+  }
+  const ppb = ppbV();
   state.events.forEach((e, i) => {
-    if (e.bar && state.showBars) {
+    if (!vert && e.bar && state.showBars) {
       const b = document.createElement('div'); b.className = 'barline'; strip.appendChild(b);
     }
-    const el = makeCard(e, i);
-    if (e.phrase === 1) el.classList.add('gap');
-    if (e.phrase === 2) el.classList.add('gap2');
+    const el = makeCard(e, i, { vert });
+    if (vert) {
+      // Høyden er nøyaktig proporsjonal med varigheten — ingen marger som forskyver tida
+      const h = e.beats * ppb;
+      el.style.setProperty('--h', h.toFixed(2) + 'px');
+      if (h < 60) el.classList.add('short');
+      if (h < 34) el.classList.add('tiny');
+      if (e.bar && state.showBars) el.classList.add('barstart');
+      if (e.phrase) el.classList.add('phrasestart');
+    } else {
+      if (e.phrase === 1) el.classList.add('gap');
+      if (e.phrase === 2) el.classList.add('gap2');
+    }
     if (el.classList.contains('out')) outCount++;
-    strip.appendChild(el);
+    host.appendChild(el);
     cards.push(el);
   });
   const warn = $('warn');
@@ -109,22 +136,85 @@ function centerCard(el, instant) {
 function go(i, instant) {
   if (!state.events.length) return;
   state.cur = clamp(i, 0, state.events.length - 1);
-  cards.forEach((c, j) => c.classList.toggle('current', j === state.cur));
+  cards.forEach((c, j) => {
+    c.classList.toggle('current', j === state.cur);
+    c.classList.toggle('done', j < state.cur);   // dempes bare i loddrett modus
+  });
   $('pos').textContent = state.cur + 1;
   $('prev').disabled = state.cur === 0;
   $('next').disabled = state.cur === state.events.length - 1;
   paintProgress();
-  centerCard(cards[state.cur], instant);
+  if (curDir() === 'v') positionStripLane(instant);
+  else centerCard(cards[state.cur], instant);
+}
+
+/* ---------------- Loddrett bane ----------------
+   Samme teknikk som tidslinja, men på Y-aksen: banen forskyves i én lineær
+   bevegelse, slik at tonene faller nedover i takt med musikken. */
+const V_PLAYHEAD = 0.72;              // landingslinja, andel ned i vinduet
+let vY = 0;
+function ppbV() { return 60 + state.air * 50; }
+function vOffset(beatPos) {
+  const h = $('strip').clientHeight || 1;
+  return h * V_PLAYHEAD - h + beatPos * ppbV();
+}
+function beatAtOffset(y) {
+  const h = $('strip').clientHeight || 1;
+  return (y - h * V_PLAYHEAD + h) / ppbV();
+}
+function vLaneStyle(transition, y) {
+  const lane = $('vlane');
+  if (!lane) return;
+  vY = y;
+  lane.style.transition = transition;
+  lane.style.transform = 'translateY(' + y.toFixed(1) + 'px)';
+}
+function positionStripLane(instant) {
+  if (!$('vlane')) return;
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  vLaneStyle((instant || reduce) ? 'none' : 'transform .18s ease-out', vOffset(tlStart[state.cur] || 0));
+}
+function glideStrip(from, leadSecs) {
+  if (!$('vlane')) return;
+  const startBeats = tlStart[from] || 0;
+  const secs = (tlTotal - startBeats) * 60 / state.bpm;
+  vLaneStyle('none', vOffset(startBeats));
+  void $('vlane').offsetHeight;
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  vLaneStyle(`transform ${secs.toFixed(3)}s linear ${Math.max(0, leadSecs || 0).toFixed(3)}s`, vOffset(tlTotal));
+}
+function freezeStrip() {
+  const lane = $('vlane');
+  if (!lane) return;
+  const m = getComputedStyle(lane).transform;
+  lane.style.transition = 'none';
+  if (!m || m === 'none') return;
+  lane.style.transform = m;
+  const nums = m.match(/matrix\(([^)]+)\)/);
+  if (nums) vY = parseFloat(nums[1].split(',')[5]);
+}
+/* Etter dra eller hjul: hopp til tonen banen står på */
+function snapStripLane() {
+  if (!$('vlane') || !tlStart.length) return;
+  const b = beatAtOffset(vY);
+  let idx = 0;
+  for (let i = 0; i < tlStart.length; i++) if (tlStart[i] <= b + 1e-6) idx = i;
+  go(clamp(idx, 0, state.events.length - 1));
 }
 
 /* Tidslinje: én bit per tone der bredden er proporsjonal med varigheten.
    Banen glir mot venstre mens sangen spilles, og spillehodet står stille i midten. */
 const TL_PPB = 30;                 // piksler per taktslag
 let pSegs = [], tlStart = [], tlTotal = 0;
+/* Starttidspunkt i taktslag for hver tone. Brukes av både den loddrette
+   banen og tidslinja, så den må regnes ut før begge tegnes. */
+function computeBeatIndex() {
+  tlStart = []; tlTotal = 0;
+  state.events.forEach(e => { tlStart.push(tlTotal); tlTotal += e.beats; });
+}
 function renderProgress() {
   const lane = $('tlane');
   lane.innerHTML = '';
-  tlStart = []; tlTotal = 0;
   pSegs = state.events.map((e, i) => {
     const b = document.createElement('div');
     b.className = 'pseg' + (e.rest ? ' rest' : '');
@@ -134,8 +224,6 @@ function renderProgress() {
     const w = e.rest ? T('ui.rest') : dispNote(writtenOf(e));
     b.title = `${i + 1}. ${w} · ${(+e.beats.toFixed(3))}`;
     b.addEventListener('click', () => { stopIfPlaying(); go(i); });
-    tlStart.push(tlTotal);
-    tlTotal += e.beats;
     lane.appendChild(b);
     return b;
   });
@@ -218,22 +306,29 @@ function renderLegend() {
 /* Dra tonerekka sidelengs med musa, og bruk hjulet til å bla vannrett.
    Berøring scroller allerede av seg selv, så vi rører bare mus og penn. */
 function setupStripDrag(el) {
-  let down = false, moved = false, pid = null, startX = 0, startLeft = 0, justDragged = false;
+  let down = false, moved = false, pid = null, start = 0, base = 0;
+  let justDragged = false, vertical = false, snapTimer = null;
   el.addEventListener('pointerdown', e => {
-    if ((e.pointerType !== 'mouse' && e.pointerType !== 'pen') || e.button !== 0) return;
+    vertical = curDir() === 'v';
+    // Vannrett har egen rulling for berøring; loddrett må håndtere alt selv
+    if (!vertical && e.pointerType !== 'mouse' && e.pointerType !== 'pen') return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
     down = true; moved = false; pid = e.pointerId;
-    startX = e.clientX; startLeft = el.scrollLeft;
+    start = vertical ? e.clientY : e.clientX;
+    base = vertical ? vY : el.scrollLeft;
   });
   el.addEventListener('pointermove', e => {
     if (!down || e.pointerId !== pid) return;
-    const dx = e.clientX - startX;
+    const d = (vertical ? e.clientY : e.clientX) - start;
     if (!moved) {
-      if (Math.abs(dx) < 5) return;
+      if (Math.abs(d) < 5) return;
       moved = true;
       el.classList.add('grabbing');
+      if (vertical) stopIfPlaying();
       try { el.setPointerCapture(pid); } catch (err) { /* ignorer */ }
     }
-    el.scrollLeft = startLeft - dx;
+    if (vertical) vLaneStyle('none', base + d);
+    else el.scrollLeft = base - d;
     e.preventDefault();
   });
   const end = () => {
@@ -242,6 +337,7 @@ function setupStripDrag(el) {
     el.classList.remove('grabbing');
     try { el.releasePointerCapture(pid); } catch (err) { /* ignorer */ }
     justDragged = moved;
+    if (moved && vertical) snapStripLane();
     moved = false;
   };
   el.addEventListener('pointerup', end);
@@ -255,232 +351,19 @@ function setupStripDrag(el) {
     e.preventDefault();
   }, true);
   el.addEventListener('wheel', e => {
+    if (curDir() === 'v') {
+      stopIfPlaying();
+      vLaneStyle('none', vY + e.deltaY);
+      clearTimeout(snapTimer);
+      snapTimer = setTimeout(snapStripLane, 140);
+      e.preventDefault();
+      return;
+    }
     if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;   // vannrett hjul virker allerede
     el.scrollLeft += e.deltaY;
     e.preventDefault();
   }, { passive: false });
   el.addEventListener('dragstart', e => e.preventDefault());
-}
-
-/* ---------------- Paneler ---------------- */
-function openSheet(id) { $(id).hidden = false; }
-function closeSheet(id) { $(id).hidden = true; }
-function switchRow(labelKey, subKey, on, onToggle) {
-  const row = document.createElement('div');
-  row.className = 'row';
-  row.innerHTML = `<label>${esc(T(labelKey))}${subKey ? `<span class="sub">${esc(T(subKey))}</span>` : ''}</label>`;
-  const b = document.createElement('button');
-  b.className = 'switch' + (on ? ' on' : '');
-  b.setAttribute('role', 'switch'); b.setAttribute('aria-checked', on ? 'true' : 'false');
-  b.addEventListener('click', () => {
-    const v = !b.classList.contains('on');
-    b.classList.toggle('on', v); b.setAttribute('aria-checked', v ? 'true' : 'false');
-    onToggle(v);
-  });
-  row.appendChild(b);
-  return row;
-}
-function segRow(labelKey, options, value, onPick) {
-  const row = document.createElement('div');
-  row.className = 'row';
-  row.innerHTML = `<label>${esc(T(labelKey))}</label>`;
-  const seg = document.createElement('div');
-  seg.className = 'seg';
-  options.forEach(o => {
-    const b = document.createElement('button');
-    b.textContent = o.label;
-    b.className = o.value === value ? 'on' : '';
-    b.addEventListener('click', () => onPick(o.value));
-    seg.appendChild(b);
-  });
-  row.appendChild(seg);
-  return row;
-}
-function rangeRow(labelKey, min, max, step, value, fmtFn, onInput) {
-  const row = document.createElement('div');
-  row.className = 'row';
-  row.innerHTML = `<label>${esc(T(labelKey))}<span class="sub" data-v>${esc(fmtFn(value))}</span></label>`;
-  const inp = document.createElement('input');
-  inp.type = 'range'; inp.min = min; inp.max = max; inp.step = step; inp.value = value;
-  inp.addEventListener('input', () => {
-    const v = parseFloat(inp.value);
-    row.querySelector('[data-v]').textContent = fmtFn(v);
-    onInput(v);
-  });
-  row.appendChild(inp);
-  return row;
-}
-function renderSettings() {
-  const b = $('setBody');
-  b.innerHTML = '';
-  $('setTitle').textContent = T('ui.settings');
-
-  b.appendChild(segRow('ui.language', LANG_ORDER.map(l => ({ value: l, label: T('meta.name', null) && I18N[l] ? I18N[l].meta.name : l })), state.lang,
-    v => { state.lang = v; saveState(); rebuildAll(); renderSettings(); }));
-
-  // Instrument: gruppe -> familie -> variant
-  const ins = curInstr();
-  const gRow = document.createElement('div');
-  gRow.className = 'row';
-  gRow.innerHTML = `<label>${esc(T('ui.instrument'))}</label>`;
-  const wrap = document.createElement('div');
-  wrap.className = 'seg';
-  const famSel = document.createElement('select');
-  FAMILIES.forEach(f => {
-    const og = famSel.querySelector(`optgroup[data-g="${f.group}"]`) || (() => {
-      const g = document.createElement('optgroup');
-      g.label = T('instrumentGroups.' + f.group); g.dataset.g = f.group; famSel.appendChild(g); return g;
-    })();
-    const o = document.createElement('option');
-    o.value = f.id; o.textContent = T('families.' + f.id) || f.id;
-    if (f.id === ins.family) o.selected = true;
-    og.appendChild(o);
-  });
-  famSel.addEventListener('change', () => {
-    const f = FAMILY_BY_ID[famSel.value];
-    setInstrument(f.std); renderSettings();
-  });
-  const varSel = document.createElement('select');
-  const fam = FAMILY_BY_ID[ins.family];
-  fam.members.forEach(id => {
-    const o = document.createElement('option');
-    o.value = id; o.textContent = instrName(id);
-    if (id === ins.id) o.selected = true;
-    varSel.appendChild(o);
-  });
-  varSel.addEventListener('change', () => { setInstrument(varSel.value); renderSettings(); });
-  wrap.appendChild(famSel);
-  if (fam.members.length > 1) wrap.appendChild(varSel);
-  gRow.appendChild(wrap);
-  b.appendChild(gRow);
-
-  if (ins.family === 'recorder') {
-    b.appendChild(segRow('ui.recorderSystem', [
-      { value: false, label: T('ui.baroque') }, { value: true, label: T('ui.german') },
-    ], state.recorderGerman, v => { state.recorderGerman = v; saveState(); rebuildAll(); renderSettings(); }));
-  }
-  b.appendChild(segRow('ui.noteNames', [
-    { value: 'native', label: T('ui.nativeNames') }, { value: 'intl', label: T('ui.intlNames') },
-  ], state.naming, v => { state.naming = v; saveState(); rebuildAll(); renderSettings(); }));
-
-  if (ins.letters || ins.semis) {
-    b.appendChild(segRow('ui.pitchView', [
-      { value: 'written', label: T('ui.writtenPitch') }, { value: 'concert', label: T('ui.concertPitch') },
-    ], state.pitchMode, v => { state.pitchMode = v; saveState(); rebuildAll(); renderSettings(); syncUrl(); }));
-  }
-  b.appendChild(rangeRow('ui.tempo', BPM_MIN, BPM_MAX, 1, state.bpm, v => v + ' BPM', applyTempo));
-  b.appendChild(switchRow('ui.autoAdvance', 'ui.autoAdvanceSub', state.auto, v => { state.auto = v; saveState(); syncUrl(); }));
-  b.appendChild(switchRow('ui.metronome', null, state.metronome, v => { state.metronome = v; saveState(); syncUrl(); }));
-  b.appendChild(switchRow('ui.toneSound', null, state.tone, v => { state.tone = v; saveState(); syncUrl(); }));
-  b.appendChild(switchRow('ui.countIn', null, state.countIn > 0, v => { state.countIn = v ? 4 : 0; saveState(); syncUrl(); }));
-  b.appendChild(rangeRow('ui.air', 0, 1.6, 0.1, state.air, v => Math.round(v * 100) + ' %', v => { state.air = v; saveState(); renderStrip(); go(state.cur, true); }));
-  b.appendChild(switchRow('ui.showFing', null, state.showFing, v => { state.showFing = v; saveState(); rebuildAll(); }));
-  b.appendChild(switchRow('ui.showBars', null, state.showBars, v => { state.showBars = v; saveState(); rebuildAll(); }));
-  b.appendChild(switchRow('ui.showOct', null, state.showOct, v => { state.showOct = v; saveState(); rebuildAll(); }));
-
-  const tr = document.createElement('div');
-  tr.className = 'row';
-  tr.innerHTML = `<label>${esc(T('ui.transpose'))}<span class="sub">${state.transpose > 0 ? '+' : ''}${state.transpose} ${esc(T('ui.semitones'))}</span></label>`;
-  const seg = document.createElement('div'); seg.className = 'seg';
-  [-12, -1, 0, 1, 12].forEach(d => {
-    const btn = document.createElement('button');
-    btn.textContent = d === 0 ? '0' : (d > 0 ? '+' + d : String(d));
-    btn.addEventListener('click', () => {
-      stopIfPlaying();
-      state.transpose = d === 0 ? 0 : clamp(state.transpose + d, -24, 24);
-      state.transposeLocked = d !== 0;
-      if (d === 0) autoOctave();
-      saveState(); rebuildAll(); renderSettings(); syncUrl();
-    });
-    seg.appendChild(btn);
-  });
-  tr.appendChild(seg); b.appendChild(tr);
-
-  const about = document.createElement('p');
-  about.className = 'hint';
-  about.innerHTML = T('ui.about');
-  b.appendChild(about);
-}
-function renderSongs() {
-  $('songsTitle').textContent = T('ui.songs');
-  const list = $('songList');
-  list.innerHTML = '';
-  SONGS.forEach(s => {
-    const b = document.createElement('button');
-    b.className = 'songitem' + (state.songId === s.id ? ' on' : '');
-    b.innerHTML = `<b>${esc(s.title[state.lang] || s.title.en)}</b><span>${esc(T('songs.src.' + s.src))} · ${esc(s.ts)} · ${s.bpm} BPM</span>`;
-    b.addEventListener('click', () => { loadSong(s.id); closeSheet('songs'); });
-    list.appendChild(b);
-  });
-  $('songsNote').textContent = T('ui.songsNote');
-}
-function renderShare() {
-  $('shareTitle').textContent = T('ui.share');
-  const b = $('shareBody');
-  b.innerHTML = '';
-  const url = buildUrl();
-  const box = document.createElement('div');
-  box.className = 'urlbox'; box.textContent = url;
-  b.appendChild(box);
-  const row = document.createElement('div');
-  row.className = 'btnrow';
-  const copy = document.createElement('button');
-  copy.className = 'gold'; copy.textContent = T('ui.copyLink');
-  copy.addEventListener('click', async () => {
-    try { await navigator.clipboard.writeText(url); copy.textContent = T('ui.copied'); }
-    catch (e) { copy.textContent = T('ui.copyFail'); }
-    setTimeout(() => { copy.textContent = T('ui.copyLink'); }, 1600);
-  });
-  row.appendChild(copy);
-  b.appendChild(row);
-
-  const h = document.createElement('div');
-  h.className = 'row';
-  h.innerHTML = `<label>${esc(T('ui.editNotes'))}<span class="sub">${esc(T('ui.editNotesSub'))}</span></label>`;
-  b.appendChild(h);
-  const ta = document.createElement('textarea');
-  ta.value = state.sourceText;
-  ta.spellcheck = false;
-  b.appendChild(ta);
-  const ti = document.createElement('div');
-  ti.className = 'row';
-  ti.innerHTML = `<label>${esc(T('ui.songTitle'))}</label>`;
-  const tin = document.createElement('input');
-  tin.type = 'text'; tin.value = state.title;
-  ti.appendChild(tin); b.appendChild(ti);
-  const tsRow = document.createElement('div');
-  tsRow.className = 'row';
-  tsRow.innerHTML = `<label>${esc(T('ui.timeSig'))}</label>`;
-  const tsIn = document.createElement('input');
-  tsIn.type = 'text'; tsIn.value = state.ts; tsIn.style.width = '90px';
-  tsRow.appendChild(tsIn); b.appendChild(tsRow);
-
-  const row2 = document.createElement('div');
-  row2.className = 'btnrow';
-  const apply = document.createElement('button');
-  apply.className = 'gold'; apply.textContent = T('ui.apply');
-  apply.addEventListener('click', () => {
-    state.title = tin.value.trim();
-    state.ts = /^\d+\s*\/\s*\d+$/.test(tsIn.value.trim()) ? tsIn.value.trim().replace(/\s/g, '') : state.ts;
-    setSource(ta.value);
-    renderShare();
-  });
-  row2.appendChild(apply);
-  const help = document.createElement('button');
-  help.textContent = T('ui.formatHelp');
-  help.addEventListener('click', () => { helpEl.hidden = !helpEl.hidden; });
-  row2.appendChild(help);
-  b.appendChild(row2);
-  const helpEl = document.createElement('p');
-  helpEl.className = 'hint'; helpEl.hidden = true;
-  helpEl.style.textAlign = 'left';
-  helpEl.innerHTML = T('ui.formatHelpText');
-  b.appendChild(helpEl);
-  const err = document.createElement('p');
-  err.className = 'warn';
-  err.textContent = state.parseErrors.length ? T('ui.parseErrors', { list: state.parseErrors.slice(0, 8).join(' ') }) : '';
-  err.hidden = !state.parseErrors.length;
-  b.appendChild(err);
 }
 
 /* ---------------- AI-prompt ----------------

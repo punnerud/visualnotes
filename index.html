@@ -73,6 +73,51 @@
   .note.out{opacity:.45}
   .note.current{border-color:var(--gold);box-shadow:0 0 0 3px var(--gold),0 12px 24px rgba(0,0,0,.4);transform:translateY(-6px)}
   .note.beat{box-shadow:0 0 0 3px var(--gold),0 0 26px rgba(242,178,52,.6)}
+  /* ---------- Loddrett modus: tonene faller nedover ---------- */
+  .strip.vert{
+    display:block;position:relative;overflow:hidden;flex:1 1 auto;min-height:240px;
+    padding:0;touch-action:none;cursor:grab;
+    -webkit-mask-image:linear-gradient(180deg,transparent,#000 9%);
+            mask-image:linear-gradient(180deg,transparent,#000 9%);
+  }
+  .strip.vert.grabbing{cursor:grabbing;user-select:none}
+  .strip.vert + .timeline{display:none}
+  .vlane{
+    position:absolute;left:0;right:0;bottom:0;
+    display:flex;flex-direction:column-reverse;align-items:center;
+    will-change:transform;
+  }
+  .strip.vert .note{
+    width:min(94vw,452px);height:var(--h);
+    flex-direction:row;align-items:center;justify-content:flex-start;
+    gap:0;padding:3px 12px;border-radius:14px;overflow:hidden;transform:none;
+  }
+  .strip.vert .note.done{opacity:.5}
+  .strip.vert .note.current{opacity:1;transform:none;box-shadow:0 0 0 3px var(--gold),0 8px 22px rgba(0,0,0,.45)}
+  .strip.vert .note .fingwrap{flex:0 0 auto;width:auto;height:auto;max-height:86px;max-width:54%}
+  .strip.vert .note .fingwrap svg{height:auto;width:auto;max-height:86px;max-width:100%}
+  .strip.vert .note .name{margin:0 16px;font-size:26px}
+  .strip.vert .note .staffwrap{flex:0 0 150px;width:150px}
+  .strip.vert .note .staffwrap svg{max-width:150px}
+  .strip.vert .note .lyric{margin-left:auto;padding-right:4px}
+  .strip.vert .note.short .fingwrap{display:none}
+  .strip.vert .note.short .name{font-size:18px;margin:0 12px}
+  .strip.vert .note.short .staffwrap{flex:0 0 116px;width:116px}
+  .strip.vert .note.tiny .staffwrap{display:none}
+  .strip.vert .note.tiny .name{font-size:14px}
+  .strip.vert .note.barstart{border-bottom-color:rgba(28,23,18,.45)}
+  .strip.vert .note.phrasestart{border-bottom:3px solid rgba(28,23,18,.65)}
+  .vplayhead{
+    position:absolute;left:0;right:0;height:2px;margin-top:-1px;
+    background:var(--paper);border-radius:2px;pointer-events:none;
+    box-shadow:0 0 9px rgba(251,247,238,.85);
+  }
+  .vplayhead::before{
+    content:"";position:absolute;left:0;top:-5px;
+    border-top:6px solid transparent;border-bottom:6px solid transparent;
+    border-left:8px solid var(--paper);
+  }
+
   .gap{margin-left:18px}
   .gap2{margin-left:34px}
   .barline{flex:0 0 auto;width:3px;align-self:stretch;margin:16px 3px;background:rgba(251,247,238,.35);border-radius:2px}
@@ -539,7 +584,7 @@ function toConcert(n, ins) { return transposeBy(n, -ins.letters, -ins.semis); }
    Språk og notenavn
    Basert på punnerud/notecircle (samme forfatter).
    ================================================================ */
-const I18N = {"no":{"clefs":{"alto":"C-nøkkel","bass":"F-nøkkel","treble":"G-nøkkel"},"families":{"bassoon":"Fagott","celloF":"Cello","clarinet":"Klarinett","dbassF":"Kontrabass","euphonium":"Eufonium","flute":"Fløyte","horn":"Valthorn","oboe":"Obo","percussion":"Slagverk","pianoF":"Piano","recorder":"Blokkfløyte","sax":"Saksofon","trombone":"Trombone","trumpet":"Trompet","tuba":"Tuba","violaF":"Bratsj","violinF":"Fiolin","voiceF":"Sang"},"instrumentGroups":{"brass":"Messing","other":"Tangent og slagverk","strings":"Strykere","woodwind":"Treblås"},"instruments":{"altflute":"Altfløyte i G","althorn":"Althorn i E♭","altsax":"Altsaksofon i E♭","barisax":"Barytonsaksofon i E♭","bassklar":"Bassklarinett i B♭","basstrombone":"Basstrombone","basstromp":"Basstrompet i B♭","blokkfloyte_c":"Blokkfløyte i C (sopran)","blokkfloyte_f":"Blokkfløyte i F (alt)","cello":"Cello","dbass":"Kontrabass","englhorn":"Engelsk horn i F","eufonium_bb":"Eufonium/baryton i B♭ (G-nøkkel)","eufonium_c":"Eufonium (bassnøkkel)","fagott":"Fagott","flute":"Fløyte","flygelhorn":"Flygelhorn i B♭","horn_f":"Valthorn i F","klar_a":"Klarinett i A","klar_bb":"Klarinett i B♭","klar_eb":"Klarinett i E♭","klokkespill":"Klokkespill","kontrafag":"Kontrafagott","kornett_bb":"Kornett i B♭","kornett_eb":"Sopran­kornett i E♭","oboe":"Obo","pauker":"Pauker","piano":"Piano","piccolo":"Pikkolofløyte","picctromp":"Piccolotrompet i B♭","sang":"Sang","sopransax":"Sopransaksofon i B♭","tenorsax":"Tenorsaksofon i B♭","trombone":"Trombone","tromp_bb":"Trompet i B♭","tromp_c":"Trompet i C","tromp_d":"Trompet i D","tromp_eb":"Trompet i E♭","tuba":"Tuba (bassnøkkel)","tuba_bb":"Tuba i B♭ (G-nøkkel, brassband)","tuba_eb":"Tuba i E♭ (G-nøkkel, brassband)","viola":"Bratsj","violin":"Fiolin","xylofon":"Xylofon"},"meta":{"lang":"no","name":"Norsk"},"songs":{"src":{"beethoven":"Beethoven 1824 · fri bruk","exercise":"Øvelse","pierpont":"J. Pierpont 1857 · fri bruk","trad":"Folketone · fri bruk"}},"ui":{"about":"<a href=\"https://github.com/punnerud/visualnotes\" target=\"_blank\" rel=\"noopener\">Kildekode på GitHub</a> · MIT-lisens","ai":"AI-prompt","aiCopy":"Kopier prompt","aiHint":"Lim inn hos ChatGPT, Claude eller Gemini. Du kan legge ved et bilde eller en PDF av noten i samme melding. Beskrivelsen av notasjonen er på engelsk — den forstår modellene best.","aiInclude":"Ta utgangspunkt i denne melodien:","aiIncludeBtn":"♪ Ta med melodien som vises nå","aiIntro":"Du er en musikkassistent som lager øvingslenker til visualnotes.\n\nOppgaven min:\n{wish}\n\nHar jeg lagt ved et bilde eller en PDF av et noteark, skal du lese melodien derfra.\nBer jeg om en melodi: svar med én enkelt URL og ingenting annet — ingen forklaring, ingen kodeblokk.\nSpør jeg om noe annet, svar kort på norsk, og legg ved en lenke hvis det er nyttig.\nEr noe uklart, velg det mest sannsynlige.","aiPlaceholder":"F.eks. «lag melodien til Fader Jakob i 3/4» eller «les noten i PDF-en jeg legger ved»","aiWish":"Hva vil du ha?","aiWishDefault":"Lag en øvingslenke til melodien jeg legger ved.","air":"Luft mellom notene","all":"Alle","apply":"Bruk","autoAdvance":"Automatisk bytte","autoAdvanceSub":"Starter avspilling når siden åpnes","baroque":"Barokk","concertPitch":"Klingende","copied":"Kopiert ✓","copyFail":"Kunne ikke kopiere","copyLink":"Kopier lenke","countIn":"Tell inn (4 slag)","covered":"Dekket hull","editNotes":"Toner","editNotesSub":"Bokstaver eller solfège. Eksempel: C4 D E F G:2 | A*4","faster":"Raskere","formatHelp":"Hjelp til formatet","formatHelpText":"Ett ord per tone: <code class=\"k\">C4</code> <code class=\"k\">F#4</code> <code class=\"k\">Bb3</code> <code class=\"k\">Ciss</code> <code class=\"k\">do re mi</code>. <code class=\"k\">H</code> og <code class=\"k\">B</code> betyr begge h/B♮ — B♭ skrives <code class=\"k\">Bb</code> eller <code class=\"k\">Hess</code>.<br>Uten oktavtall velges tonen nærmest den forrige.<br>Lengde: <code class=\"k\">C:2</code> = to slag, <code class=\"k\">C:.5</code> = åttedel, eller <code class=\"k\">:w :h :q :e :s</code> med punktum for punktert (<code class=\"k\">:q.</code>).<br>Pause: <code class=\"k\">-</code> · Gjenta: <code class=\"k\">A*4</code> · Frase: <code class=\"k\">|</code> · Linjeskift ved utskrift: <code class=\"k\">||</code> · Bindebue: <code class=\"k\">C~ C</code>","german":"Tysk","halfHole":"Halvt hull","hint":"Trykk på en tone for å hoppe dit · piltaster blar, mellomrom spiller av","instrument":"Instrument","intlNames":"Internasjonale","keyboard":"Merket tangent","landscape":"Liggende ark","language":"Språk","metronome":"Metronom","nativeNames":"Nasjonale","noFingering":"ingen grepdata","noteNames":"Notenavn","ofTotal":"av {n}","open":"Åpen","openHole":"Åpent hull","outOfRange":"{n} toner ligger utenfor registeret til {instr}","parseErrors":"Forsto ikke: {list}","pause":"Pause","perLine":"Per linje","pitchView":"Tonehøyde","play":"Spill av","portrait":"Stående ark","pressed":"Trykk ned","print":"Skriv ut","printLegend":"Svart = trykk ned / dekket hull · hvit = åpen · halvfylt = halvt hull. Ventiler: 1 nederst (nærmest deg), 3 øverst.","printTip":"Arket her viser nøyaktig det som kommer ut. Velg «Standard» marger i utskriftsdialogen, og slå av topp- og bunntekst.","recorderSystem":"Grepsystem","rest":"Pause","semitones":"halvtoner","settings":"Innstillinger","share":"Del og rediger","showBars":"Vis taktstreker","showFing":"Vis grep","showOct":"Vis oktavtall","slidePos":"Tallet er posisjonen på draget","slower":"Saktere","songTitle":"Tittel","songs":"Sanger","songsNote":"Alle melodiene er folketoner eller fri bruk. Sangtekst er ikke lagt inn — bruk &w= for egne stavelser.","stringPos":"Streng og finger i 1. posisjon","tempo":"Tempo","tempoDefault":"standard {n}","tempoExact":"Trykk for å skrive inn nøyaktig tempo","timeSig":"Taktart","toneSound":"Spill tone","transpose":"Transponer","untitled":"Uten tittel","writtenPitch":"Skrevet"}},"sv":{"clefs":{"alto":"C-klav","bass":"F-klav","treble":"G-klav"},"families":{"bassoon":"Fagott","celloF":"Cello","clarinet":"Klarinett","dbassF":"Kontrabas","euphonium":"Eufonium","flute":"Flöjt","horn":"Valthorn","oboe":"Oboe","percussion":"Slagverk","pianoF":"Piano","recorder":"Blockflöjt","sax":"Saxofon","trombone":"Trombon","trumpet":"Trumpet","tuba":"Tuba","violaF":"Viola","violinF":"Violin","voiceF":"Sång"},"instrumentGroups":{"brass":"Bleckblås","other":"Tangentinstrument och slagverk","strings":"Stråkar","woodwind":"Träblås"},"instruments":{"altflute":"Altflöjt i G","althorn":"Althorn i E♭","altsax":"Altsaxofon i E♭","barisax":"Barytonsaxofon i E♭","bassklar":"Basklarinett i B♭","basstrombone":"Bastrombon","basstromp":"Bastrumpet i B♭","blokkfloyte_c":"Blockflöjt i C (sopran)","blokkfloyte_f":"Blockflöjt i F (alt)","cello":"Cello","dbass":"Kontrabas","englhorn":"Engelskt horn i F","eufonium_bb":"Eufonium/baryton i B♭ (G-klav)","eufonium_c":"Eufonium (basklav)","fagott":"Fagott","flute":"Flöjt","flygelhorn":"Flygelhorn i B♭","horn_f":"Valthorn i F","klar_a":"Klarinett i A","klar_bb":"Klarinett i B♭","klar_eb":"Klarinett i E♭","klokkespill":"Klockspel","kontrafag":"Kontrafagott","kornett_bb":"Kornett i B♭","kornett_eb":"Soprankornett i E♭","oboe":"Oboe","pauker":"Pukor","piano":"Piano","piccolo":"Piccolaflöjt","picctromp":"Piccolatrumpet i B♭","sang":"Sång","sopransax":"Sopransaxofon i B♭","tenorsax":"Tenorsaxofon i B♭","trombone":"Trombon","tromp_bb":"Trumpet i B♭","tromp_c":"Trumpet i C","tromp_d":"Trumpet i D","tromp_eb":"Trumpet i E♭","tuba":"Tuba (basklav)","tuba_bb":"Tuba i B♭ (G-klav, brassband)","tuba_eb":"Tuba i E♭ (G-klav, brassband)","viola":"Viola","violin":"Violin","xylofon":"Xylofon"},"meta":{"lang":"sv","name":"Svenska"},"songs":{"src":{"beethoven":"Beethoven 1824 · fri användning","exercise":"Övning","pierpont":"J. Pierpont 1857 · fri användning","trad":"Folkmelodi · fri användning"}},"ui":{"about":"<a href=\"https://github.com/punnerud/visualnotes\" target=\"_blank\" rel=\"noopener\">Källkod på GitHub</a> · MIT-licens","ai":"AI-prompt","aiCopy":"Kopiera prompt","aiHint":"Klistra in i ChatGPT, Claude eller Gemini. Du kan bifoga en bild eller en PDF med noterna i samma meddelande. Beskrivningen av notationen är på engelska — den förstår modellerna bäst.","aiInclude":"Utgå från den här melodin:","aiIncludeBtn":"♪ Ta med melodin som visas nu","aiIntro":"Du är en musikassistent som gör övningslänkar till visualnotes.\n\nMin uppgift:\n{wish}\n\nHar jag bifogat en bild eller en PDF med noter ska du läsa melodin därifrån.\nBer jag om en melodi: svara med en enda URL och ingenting annat — ingen förklaring, ingen kodruta.\nFrågar jag om något annat, svara kort på svenska och bifoga en länk om det hjälper.\nÄr något oklart, välj det mest sannolika.","aiPlaceholder":"T.ex. ”gör melodin till Broder Jakob i 3/4” eller ”läs noterna i PDF:en jag bifogar”","aiWish":"Vad vill du ha?","aiWishDefault":"Gör en övningslänk till melodin jag bifogar.","air":"Luft mellan noterna","all":"Alla","apply":"Använd","autoAdvance":"Automatiskt byte","autoAdvanceSub":"Startar uppspelning när sidan öppnas","baroque":"Barock","concertPitch":"Klingande","copied":"Kopierad ✓","copyFail":"Kunde inte kopiera","copyLink":"Kopiera länk","countIn":"Räkna in (4 slag)","covered":"Täckt hål","editNotes":"Toner","editNotesSub":"Bokstäver eller solfège. Exempel: C4 D E F G:2 | A*4","faster":"Snabbare","formatHelp":"Hjälp med formatet","formatHelpText":"Ett ord per ton: <code class=\"k\">C4</code> <code class=\"k\">F#4</code> <code class=\"k\">Bb3</code> <code class=\"k\">Ciss</code> <code class=\"k\">do re mi</code>. <code class=\"k\">H</code> och <code class=\"k\">B</code> betyder båda h/B♮ — B♭ skrivs <code class=\"k\">Bb</code> eller <code class=\"k\">Hess</code>.<br>Utan oktavsiffra väljs tonen närmast den föregående.<br>Längd: <code class=\"k\">C:2</code> = två slag, <code class=\"k\">C:.5</code> = åttondel, eller <code class=\"k\">:w :h :q :e :s</code> med punkt för punkterad (<code class=\"k\">:q.</code>).<br>Paus: <code class=\"k\">-</code> · Upprepa: <code class=\"k\">A*4</code> · Fras: <code class=\"k\">|</code> · Radbrytning vid utskrift: <code class=\"k\">||</code> · Båge: <code class=\"k\">C~ C</code>","german":"Tyskt","halfHole":"Halvt hål","hint":"Tryck på en ton för att hoppa dit · piltangenter bläddrar, mellanslag spelar","instrument":"Instrument","intlNames":"Internationella","keyboard":"Markerad tangent","landscape":"Liggande ark","language":"Språk","metronome":"Metronom","nativeNames":"Nationella","noFingering":"inga greppdata","noteNames":"Notnamn","ofTotal":"av {n}","open":"Öppen","openHole":"Öppet hål","outOfRange":"{n} toner ligger utanför registret för {instr}","parseErrors":"Förstod inte: {list}","pause":"Pausa","perLine":"Per rad","pitchView":"Tonhöjd","play":"Spela upp","portrait":"Stående ark","pressed":"Tryck ner","print":"Skriv ut","printLegend":"Svart = nedtryckt / täckt hål · vit = öppen · halvfylld = halvt hål. Ventiler: 1 nederst (närmast dig), 3 överst.","printTip":"Arket här visar exakt det som skrivs ut. Välj ”Standard” marginaler i utskriftsdialogen och stäng av sidhuvud och sidfot.","recorderSystem":"Greppsystem","rest":"Paus","semitones":"halvtoner","settings":"Inställningar","share":"Dela och redigera","showBars":"Visa taktstreck","showFing":"Visa grepp","showOct":"Visa oktavsiffra","slidePos":"Siffran är dragets läge","slower":"Långsammare","songTitle":"Titel","songs":"Sånger","songsNote":"Alla melodier är folkmelodier eller fria. Sångtext ingår inte — använd &w= för egna stavelser.","stringPos":"Sträng och finger i första läget","tempo":"Tempo","tempoDefault":"standard {n}","tempoExact":"Tryck för att skriva in exakt tempo","timeSig":"Taktart","toneSound":"Spela ton","transpose":"Transponera","untitled":"Utan titel","writtenPitch":"Skrivet"}},"da":{"clefs":{"alto":"C-nøgle","bass":"F-nøgle","treble":"G-nøgle"},"families":{"bassoon":"Fagot","celloF":"Cello","clarinet":"Klarinet","dbassF":"Kontrabas","euphonium":"Euphonium","flute":"Fløjte","horn":"Valdhorn","oboe":"Obo","percussion":"Slagtøj","pianoF":"Klaver","recorder":"Blokfløjte","sax":"Saxofon","trombone":"Trombone","trumpet":"Trompet","tuba":"Tuba","violaF":"Bratsch","violinF":"Violin","voiceF":"Sang"},"instrumentGroups":{"brass":"Messingblæsere","other":"Tangenter og slagtøj","strings":"Strygere","woodwind":"Træblæsere"},"instruments":{"altflute":"Altfløjte i G","althorn":"Althorn i E♭","altsax":"Altsaxofon i E♭","barisax":"Barytonsaxofon i E♭","bassklar":"Basklarinet i B♭","basstrombone":"Basbasun","basstromp":"Bastrompet i B♭","blokkfloyte_c":"Blokfløjte i C (sopran)","blokkfloyte_f":"Blokfløjte i F (alt)","cello":"Cello","dbass":"Kontrabas","englhorn":"Engelskhorn i F","eufonium_bb":"Euphonium/baryton i B♭ (G-nøgle)","eufonium_c":"Euphonium (basnøgle)","fagott":"Fagot","flute":"Fløjte","flygelhorn":"Flygelhorn i B♭","horn_f":"Valdhorn i F","klar_a":"Klarinet i A","klar_bb":"Klarinet i B♭","klar_eb":"Klarinet i E♭","klokkespill":"Klokkespil","kontrafag":"Kontrafagot","kornett_bb":"Kornet i B♭","kornett_eb":"Soprankornet i E♭","oboe":"Obo","pauker":"Pauker","piano":"Klaver","piccolo":"Piccolofløjte","picctromp":"Piccolotrompet i B♭","sang":"Sang","sopransax":"Sopransaxofon i B♭","tenorsax":"Tenorsaxofon i B♭","trombone":"Basun","tromp_bb":"Trompet i B♭","tromp_c":"Trompet i C","tromp_d":"Trompet i D","tromp_eb":"Trompet i E♭","tuba":"Tuba (basnøgle)","tuba_bb":"Tuba i B♭ (G-nøgle, brassband)","tuba_eb":"Tuba i E♭ (G-nøgle, brassband)","viola":"Bratsch","violin":"Violin","xylofon":"Xylofon"},"meta":{"lang":"da","name":"Dansk"},"songs":{"src":{"beethoven":"Beethoven 1824 · fri brug","exercise":"Øvelse","pierpont":"J. Pierpont 1857 · fri brug","trad":"Folkemelodi · fri brug"}},"ui":{"about":"<a href=\"https://github.com/punnerud/visualnotes\" target=\"_blank\" rel=\"noopener\">Kildekode på GitHub</a> · MIT-licens","ai":"AI-prompt","aiCopy":"Kopiér prompt","aiHint":"Indsæt i ChatGPT, Claude eller Gemini. Du kan vedhæfte et billede eller en PDF med noderne i samme besked. Beskrivelsen af notationen er på engelsk — den forstår modellerne bedst.","aiInclude":"Tag udgangspunkt i denne melodi:","aiIncludeBtn":"♪ Tag melodien, der vises nu, med","aiIntro":"Du er en musikassistent, der laver øvelseslinks til visualnotes.\n\nMin opgave:\n{wish}\n\nHar jeg vedhæftet et billede eller en PDF med noder, skal du læse melodien derfra.\nBeder jeg om en melodi: svar med ét enkelt URL og intet andet — ingen forklaring, ingen kodeblok.\nSpørger jeg om noget andet, svar kort på dansk, og vedlæg et link hvis det hjælper.\nEr noget uklart, så vælg det mest sandsynlige.","aiPlaceholder":"F.eks. »lav melodien til Mester Jakob i 3/4« eller »læs noderne i den PDF, jeg vedhæfter«","aiWish":"Hvad vil du have?","aiWishDefault":"Lav et øvelseslink til melodien, jeg vedhæfter.","air":"Luft mellem noderne","all":"Alle","apply":"Anvend","autoAdvance":"Automatisk skift","autoAdvanceSub":"Starter afspilning når siden åbnes","baroque":"Barok","concertPitch":"Klingende","copied":"Kopieret ✓","copyFail":"Kunne ikke kopiere","copyLink":"Kopiér link","countIn":"Tæl ind (4 slag)","covered":"Dækket hul","editNotes":"Toner","editNotesSub":"Bogstaver eller solfège. Eksempel: C4 D E F G:2 | A*4","faster":"Hurtigere","formatHelp":"Hjælp til formatet","formatHelpText":"Ét ord per tone: <code class=\"k\">C4</code> <code class=\"k\">F#4</code> <code class=\"k\">Bb3</code> <code class=\"k\">Cis</code> <code class=\"k\">do re mi</code>. <code class=\"k\">H</code> og <code class=\"k\">B</code> betyder begge h/B♮ — B♭ skrives <code class=\"k\">Bb</code> eller <code class=\"k\">Hes</code>.<br>Uden oktavtal vælges tonen nærmest den forrige.<br>Længde: <code class=\"k\">C:2</code> = to slag, <code class=\"k\">C:.5</code> = ottendedel, eller <code class=\"k\">:w :h :q :e :s</code> med punktum for punkteret (<code class=\"k\">:q.</code>).<br>Pause: <code class=\"k\">-</code> · Gentag: <code class=\"k\">A*4</code> · Frase: <code class=\"k\">|</code> · Linjeskift ved udskrift: <code class=\"k\">||</code> · Bindebue: <code class=\"k\">C~ C</code>","german":"Tysk","halfHole":"Halvt hul","hint":"Tryk på en tone for at springe dertil · piletaster blader, mellemrum afspiller","instrument":"Instrument","intlNames":"Internationale","keyboard":"Markeret tangent","landscape":"Liggende ark","language":"Sprog","metronome":"Metronom","nativeNames":"Nationale","noFingering":"ingen grebdata","noteNames":"Nodenavne","ofTotal":"af {n}","open":"Åben","openHole":"Åbent hul","outOfRange":"{n} toner ligger uden for registret på {instr}","parseErrors":"Forstod ikke: {list}","pause":"Pause","perLine":"Per linje","pitchView":"Tonehøjde","play":"Afspil","portrait":"Stående ark","pressed":"Tryk ned","print":"Udskriv","printLegend":"Sort = trykket ned / dækket hul · hvid = åben · halvt fyldt = halvt hul. Ventiler: 1 nederst (nærmest dig), 3 øverst.","printTip":"Arket her viser præcis det, der kommer ud. Vælg »Standard« margener i udskriftsdialogen, og slå sidehoved og sidefod fra.","recorderSystem":"Grebsystem","rest":"Pause","semitones":"halvtoner","settings":"Indstillinger","share":"Del og rediger","showBars":"Vis taktstreger","showFing":"Vis greb","showOct":"Vis oktavtal","slidePos":"Tallet er positionen på trækket","slower":"Langsommere","songTitle":"Titel","songs":"Sange","songsNote":"Alle melodier er folkemelodier eller fri brug. Sangtekst er ikke med — brug &w= til egne stavelser.","stringPos":"Streng og finger i 1. position","tempo":"Tempo","tempoDefault":"standard {n}","tempoExact":"Tryk for at skrive et præcist tempo","timeSig":"Taktart","toneSound":"Spil tone","transpose":"Transponér","untitled":"Uden titel","writtenPitch":"Skrevet"}},"en":{"clefs":{"alto":"Alto clef","bass":"Bass clef","treble":"Treble clef"},"families":{"bassoon":"Bassoon","celloF":"Cello","clarinet":"Clarinet","dbassF":"Double bass","euphonium":"Euphonium","flute":"Flute","horn":"French horn","oboe":"Oboe","percussion":"Percussion","pianoF":"Piano","recorder":"Recorder","sax":"Saxophone","trombone":"Trombone","trumpet":"Trumpet","tuba":"Tuba","violaF":"Viola","violinF":"Violin","voiceF":"Voice"},"instrumentGroups":{"brass":"Brass","other":"Keyboard and percussion","strings":"Strings","woodwind":"Woodwinds"},"instruments":{"altflute":"Alto flute in G","althorn":"Tenor horn in E♭","altsax":"Alto saxophone in E♭","barisax":"Baritone saxophone in E♭","bassklar":"Bass clarinet in B♭","basstrombone":"Bass trombone","basstromp":"Bass trumpet in B♭","blokkfloyte_c":"Descant recorder in C","blokkfloyte_f":"Treble recorder in F","cello":"Cello","dbass":"Double bass","englhorn":"English horn in F","eufonium_bb":"Euphonium/baritone in B♭ (treble clef)","eufonium_c":"Euphonium (bass clef)","fagott":"Bassoon","flute":"Flute","flygelhorn":"Flugelhorn in B♭","horn_f":"French horn in F","klar_a":"Clarinet in A","klar_bb":"Clarinet in B♭","klar_eb":"Clarinet in E♭","klokkespill":"Glockenspiel","kontrafag":"Contrabassoon","kornett_bb":"Cornet in B♭","kornett_eb":"Soprano cornet in E♭","oboe":"Oboe","pauker":"Timpani","piano":"Piano","piccolo":"Piccolo","picctromp":"Piccolo trumpet in B♭","sang":"Voice","sopransax":"Soprano saxophone in B♭","tenorsax":"Tenor saxophone in B♭","trombone":"Trombone","tromp_bb":"Trumpet in B♭","tromp_c":"Trumpet in C","tromp_d":"Trumpet in D","tromp_eb":"Trumpet in E♭","tuba":"Tuba (bass clef)","tuba_bb":"Tuba in B♭ (treble clef, brass band)","tuba_eb":"Tuba in E♭ (treble clef, brass band)","viola":"Viola","violin":"Violin","xylofon":"Xylophone"},"meta":{"lang":"en","name":"English"},"songs":{"src":{"beethoven":"Beethoven 1824 · public domain","exercise":"Exercise","pierpont":"J. Pierpont 1857 · public domain","trad":"Traditional · public domain"}},"ui":{"about":"<a href=\"https://github.com/punnerud/visualnotes\" target=\"_blank\" rel=\"noopener\">Source on GitHub</a> · MIT licence","ai":"AI prompt","aiCopy":"Copy prompt","aiHint":"Paste it into ChatGPT, Claude or Gemini. You can attach an image or a PDF of the score in the same message. The notation reference is in English, which the models handle best.","aiInclude":"Start from this melody:","aiIncludeBtn":"♪ Include the melody shown now","aiIntro":"You are a music assistant who builds practice links for visualnotes.\n\nMy task:\n{wish}\n\nIf I attached an image or a PDF of sheet music, read the melody from it.\nIf I ask for a melody: answer with a single URL and nothing else — no explanation, no code block.\nIf I ask about something else, answer briefly and add a link if it helps.\nIf anything is unclear, pick the most likely reading.","aiPlaceholder":"E.g. \"make the melody for Frère Jacques in 3/4\" or \"read the notes in the PDF I attach\"","aiWish":"What do you want?","aiWishDefault":"Make a practice link for the melody I attach.","air":"Space between notes","all":"All","apply":"Apply","autoAdvance":"Auto-advance","autoAdvanceSub":"Starts playback when the page opens","baroque":"Baroque","concertPitch":"Concert","copied":"Copied ✓","copyFail":"Could not copy","copyLink":"Copy link","countIn":"Count in (4 beats)","covered":"Covered hole","editNotes":"Notes","editNotesSub":"Letters or solfège. Example: C4 D E F G:2 | A*4","faster":"Faster","formatHelp":"Format help","formatHelpText":"One word per note: <code class=\"k\">C4</code> <code class=\"k\">F#4</code> <code class=\"k\">Bb3</code> <code class=\"k\">Cis</code> <code class=\"k\">do re mi</code>. Both <code class=\"k\">H</code> and <code class=\"k\">B</code> mean B♮ — write B♭ as <code class=\"k\">Bb</code> or <code class=\"k\">Hes</code>.<br>Without an octave digit the note nearest the previous one is chosen.<br>Length: <code class=\"k\">C:2</code> = two beats, <code class=\"k\">C:.5</code> = eighth, or <code class=\"k\">:w :h :q :e :s</code> with a dot for dotted (<code class=\"k\">:q.</code>).<br>Rest: <code class=\"k\">-</code> · Repeat: <code class=\"k\">A*4</code> · Phrase: <code class=\"k\">|</code> · Line break when printing: <code class=\"k\">||</code> · Tie: <code class=\"k\">C~ C</code>","german":"German","halfHole":"Half hole","hint":"Tap a note to jump there · arrow keys browse, space plays","instrument":"Instrument","intlNames":"International","keyboard":"Highlighted key","landscape":"Landscape","language":"Language","metronome":"Metronome","nativeNames":"Traditional","noFingering":"no chart","noteNames":"Note names","ofTotal":"of {n}","open":"Open","openHole":"Open hole","outOfRange":"{n} notes are outside the range of the {instr}","parseErrors":"Could not read: {list}","pause":"Pause","perLine":"Per line","pitchView":"Pitch","play":"Play","portrait":"Portrait","pressed":"Pressed","print":"Print","printLegend":"Black = pressed / covered · white = open · half filled = half hole. Valves: 1 at the bottom (nearest you), 3 at the top.","printTip":"This sheet shows exactly what gets printed. Choose \"Default\" margins in the print dialog and turn off headers and footers.","recorderSystem":"Fingering system","rest":"Rest","semitones":"semitones","settings":"Settings","share":"Share and edit","showBars":"Show bar lines","showFing":"Show fingering","showOct":"Show octave number","slidePos":"The number is the slide position","slower":"Slower","songTitle":"Title","songs":"Songs","songsNote":"Every melody is traditional or public domain. Lyrics are not included — use &w= for your own syllables.","stringPos":"String and finger, first position","tempo":"Tempo","tempoDefault":"default {n}","tempoExact":"Tap to type an exact tempo","timeSig":"Time signature","toneSound":"Play the note","transpose":"Transpose","untitled":"Untitled","writtenPitch":"Written"}}};
+const I18N = {"no":{"clefs":{"alto":"C-nøkkel","bass":"F-nøkkel","treble":"G-nøkkel"},"families":{"bassoon":"Fagott","celloF":"Cello","clarinet":"Klarinett","dbassF":"Kontrabass","euphonium":"Eufonium","flute":"Fløyte","horn":"Valthorn","oboe":"Obo","percussion":"Slagverk","pianoF":"Piano","recorder":"Blokkfløyte","sax":"Saksofon","trombone":"Trombone","trumpet":"Trompet","tuba":"Tuba","violaF":"Bratsj","violinF":"Fiolin","voiceF":"Sang"},"instrumentGroups":{"brass":"Messing","other":"Tangent og slagverk","strings":"Strykere","woodwind":"Treblås"},"instruments":{"altflute":"Altfløyte i G","althorn":"Althorn i E♭","altsax":"Altsaksofon i E♭","barisax":"Barytonsaksofon i E♭","bassklar":"Bassklarinett i B♭","basstrombone":"Basstrombone","basstromp":"Basstrompet i B♭","blokkfloyte_c":"Blokkfløyte i C (sopran)","blokkfloyte_f":"Blokkfløyte i F (alt)","cello":"Cello","dbass":"Kontrabass","englhorn":"Engelsk horn i F","eufonium_bb":"Eufonium/baryton i B♭ (G-nøkkel)","eufonium_c":"Eufonium (bassnøkkel)","fagott":"Fagott","flute":"Fløyte","flygelhorn":"Flygelhorn i B♭","horn_f":"Valthorn i F","klar_a":"Klarinett i A","klar_bb":"Klarinett i B♭","klar_eb":"Klarinett i E♭","klokkespill":"Klokkespill","kontrafag":"Kontrafagott","kornett_bb":"Kornett i B♭","kornett_eb":"Sopran­kornett i E♭","oboe":"Obo","pauker":"Pauker","piano":"Piano","piccolo":"Pikkolofløyte","picctromp":"Piccolotrompet i B♭","sang":"Sang","sopransax":"Sopransaksofon i B♭","tenorsax":"Tenorsaksofon i B♭","trombone":"Trombone","tromp_bb":"Trompet i B♭","tromp_c":"Trompet i C","tromp_d":"Trompet i D","tromp_eb":"Trompet i E♭","tuba":"Tuba (bassnøkkel)","tuba_bb":"Tuba i B♭ (G-nøkkel, brassband)","tuba_eb":"Tuba i E♭ (G-nøkkel, brassband)","viola":"Bratsj","violin":"Fiolin","xylofon":"Xylofon"},"meta":{"lang":"no","name":"Norsk"},"songs":{"src":{"beethoven":"Beethoven 1824 · fri bruk","exercise":"Øvelse","pierpont":"J. Pierpont 1857 · fri bruk","trad":"Folketone · fri bruk"}},"ui":{"about":"<a href=\"https://github.com/punnerud/visualnotes\" target=\"_blank\" rel=\"noopener\">Kildekode på GitHub</a> · MIT-lisens","ai":"AI-prompt","aiCopy":"Kopier prompt","aiHint":"Lim inn hos ChatGPT, Claude eller Gemini. Du kan legge ved et bilde eller en PDF av noten i samme melding. Beskrivelsen av notasjonen er på engelsk — den forstår modellene best.","aiInclude":"Ta utgangspunkt i denne melodien:","aiIncludeBtn":"♪ Ta med melodien som vises nå","aiIntro":"Du er en musikkassistent som lager øvingslenker til visualnotes.\n\nOppgaven min:\n{wish}\n\nHar jeg lagt ved et bilde eller en PDF av et noteark, skal du lese melodien derfra.\nBer jeg om en melodi: svar med én enkelt URL og ingenting annet — ingen forklaring, ingen kodeblokk.\nSpør jeg om noe annet, svar kort på norsk, og legg ved en lenke hvis det er nyttig.\nEr noe uklart, velg det mest sannsynlige.","aiPlaceholder":"F.eks. «lag melodien til Fader Jakob i 3/4» eller «les noten i PDF-en jeg legger ved»","aiWish":"Hva vil du ha?","aiWishDefault":"Lag en øvingslenke til melodien jeg legger ved.","air":"Luft mellom notene","all":"Alle","apply":"Bruk","autoAdvance":"Automatisk bytte","autoAdvanceSub":"Starter avspilling når siden åpnes","baroque":"Barokk","concertPitch":"Klingende","copied":"Kopiert ✓","copyFail":"Kunne ikke kopiere","copyLink":"Kopier lenke","countIn":"Tell inn (4 slag)","covered":"Dekket hull","dirAuto":"Auto","dirAutoSub":"Følger instrumentet: liggende grepdiagram faller nedover","dirHoriz":"⇄ Vannrett","dirVert":"⇅ Loddrett","direction":"Retning","editNotes":"Toner","editNotesSub":"Bokstaver eller solfège. Eksempel: C4 D E F G:2 | A*4","faster":"Raskere","formatHelp":"Hjelp til formatet","formatHelpText":"Ett ord per tone: <code class=\"k\">C4</code> <code class=\"k\">F#4</code> <code class=\"k\">Bb3</code> <code class=\"k\">Ciss</code> <code class=\"k\">do re mi</code>. <code class=\"k\">H</code> og <code class=\"k\">B</code> betyr begge h/B♮ — B♭ skrives <code class=\"k\">Bb</code> eller <code class=\"k\">Hess</code>.<br>Uten oktavtall velges tonen nærmest den forrige.<br>Lengde: <code class=\"k\">C:2</code> = to slag, <code class=\"k\">C:.5</code> = åttedel, eller <code class=\"k\">:w :h :q :e :s</code> med punktum for punktert (<code class=\"k\">:q.</code>).<br>Pause: <code class=\"k\">-</code> · Gjenta: <code class=\"k\">A*4</code> · Frase: <code class=\"k\">|</code> · Linjeskift ved utskrift: <code class=\"k\">||</code> · Bindebue: <code class=\"k\">C~ C</code>","german":"Tysk","halfHole":"Halvt hull","hint":"Trykk på en tone for å hoppe dit · piltaster blar, mellomrom spiller av","instrument":"Instrument","intlNames":"Internasjonale","keyboard":"Merket tangent","landscape":"Liggende ark","language":"Språk","metronome":"Metronom","nativeNames":"Nasjonale","noFingering":"ingen grepdata","noteNames":"Notenavn","ofTotal":"av {n}","open":"Åpen","openHole":"Åpent hull","outOfRange":"{n} toner ligger utenfor registeret til {instr}","parseErrors":"Forsto ikke: {list}","pause":"Pause","perLine":"Per linje","pitchView":"Tonehøyde","play":"Spill av","portrait":"Stående ark","pressed":"Trykk ned","print":"Skriv ut","printLegend":"Svart = trykk ned / dekket hull · hvit = åpen · halvfylt = halvt hull. Ventiler: 1 nederst (nærmest deg), 3 øverst.","printTip":"Arket her viser nøyaktig det som kommer ut. Velg «Standard» marger i utskriftsdialogen, og slå av topp- og bunntekst.","recorderSystem":"Grepsystem","rest":"Pause","semitones":"halvtoner","settings":"Innstillinger","share":"Del og rediger","showBars":"Vis taktstreker","showFing":"Vis grep","showOct":"Vis oktavtall","slidePos":"Tallet er posisjonen på draget","slower":"Saktere","songTitle":"Tittel","songs":"Sanger","songsNote":"Alle melodiene er folketoner eller fri bruk. Sangtekst er ikke lagt inn — bruk &w= for egne stavelser.","stringPos":"Streng og finger i 1. posisjon","tempo":"Tempo","tempoDefault":"standard {n}","tempoExact":"Trykk for å skrive inn nøyaktig tempo","timeSig":"Taktart","toneSound":"Spill tone","transpose":"Transponer","untitled":"Uten tittel","writtenPitch":"Skrevet"}},"sv":{"clefs":{"alto":"C-klav","bass":"F-klav","treble":"G-klav"},"families":{"bassoon":"Fagott","celloF":"Cello","clarinet":"Klarinett","dbassF":"Kontrabas","euphonium":"Eufonium","flute":"Flöjt","horn":"Valthorn","oboe":"Oboe","percussion":"Slagverk","pianoF":"Piano","recorder":"Blockflöjt","sax":"Saxofon","trombone":"Trombon","trumpet":"Trumpet","tuba":"Tuba","violaF":"Viola","violinF":"Violin","voiceF":"Sång"},"instrumentGroups":{"brass":"Bleckblås","other":"Tangentinstrument och slagverk","strings":"Stråkar","woodwind":"Träblås"},"instruments":{"altflute":"Altflöjt i G","althorn":"Althorn i E♭","altsax":"Altsaxofon i E♭","barisax":"Barytonsaxofon i E♭","bassklar":"Basklarinett i B♭","basstrombone":"Bastrombon","basstromp":"Bastrumpet i B♭","blokkfloyte_c":"Blockflöjt i C (sopran)","blokkfloyte_f":"Blockflöjt i F (alt)","cello":"Cello","dbass":"Kontrabas","englhorn":"Engelskt horn i F","eufonium_bb":"Eufonium/baryton i B♭ (G-klav)","eufonium_c":"Eufonium (basklav)","fagott":"Fagott","flute":"Flöjt","flygelhorn":"Flygelhorn i B♭","horn_f":"Valthorn i F","klar_a":"Klarinett i A","klar_bb":"Klarinett i B♭","klar_eb":"Klarinett i E♭","klokkespill":"Klockspel","kontrafag":"Kontrafagott","kornett_bb":"Kornett i B♭","kornett_eb":"Soprankornett i E♭","oboe":"Oboe","pauker":"Pukor","piano":"Piano","piccolo":"Piccolaflöjt","picctromp":"Piccolatrumpet i B♭","sang":"Sång","sopransax":"Sopransaxofon i B♭","tenorsax":"Tenorsaxofon i B♭","trombone":"Trombon","tromp_bb":"Trumpet i B♭","tromp_c":"Trumpet i C","tromp_d":"Trumpet i D","tromp_eb":"Trumpet i E♭","tuba":"Tuba (basklav)","tuba_bb":"Tuba i B♭ (G-klav, brassband)","tuba_eb":"Tuba i E♭ (G-klav, brassband)","viola":"Viola","violin":"Violin","xylofon":"Xylofon"},"meta":{"lang":"sv","name":"Svenska"},"songs":{"src":{"beethoven":"Beethoven 1824 · fri användning","exercise":"Övning","pierpont":"J. Pierpont 1857 · fri användning","trad":"Folkmelodi · fri användning"}},"ui":{"about":"<a href=\"https://github.com/punnerud/visualnotes\" target=\"_blank\" rel=\"noopener\">Källkod på GitHub</a> · MIT-licens","ai":"AI-prompt","aiCopy":"Kopiera prompt","aiHint":"Klistra in i ChatGPT, Claude eller Gemini. Du kan bifoga en bild eller en PDF med noterna i samma meddelande. Beskrivningen av notationen är på engelska — den förstår modellerna bäst.","aiInclude":"Utgå från den här melodin:","aiIncludeBtn":"♪ Ta med melodin som visas nu","aiIntro":"Du är en musikassistent som gör övningslänkar till visualnotes.\n\nMin uppgift:\n{wish}\n\nHar jag bifogat en bild eller en PDF med noter ska du läsa melodin därifrån.\nBer jag om en melodi: svara med en enda URL och ingenting annat — ingen förklaring, ingen kodruta.\nFrågar jag om något annat, svara kort på svenska och bifoga en länk om det hjälper.\nÄr något oklart, välj det mest sannolika.","aiPlaceholder":"T.ex. ”gör melodin till Broder Jakob i 3/4” eller ”läs noterna i PDF:en jag bifogar”","aiWish":"Vad vill du ha?","aiWishDefault":"Gör en övningslänk till melodin jag bifogar.","air":"Luft mellan noterna","all":"Alla","apply":"Använd","autoAdvance":"Automatiskt byte","autoAdvanceSub":"Startar uppspelning när sidan öppnas","baroque":"Barock","concertPitch":"Klingande","copied":"Kopierad ✓","copyFail":"Kunde inte kopiera","copyLink":"Kopiera länk","countIn":"Räkna in (4 slag)","covered":"Täckt hål","dirAuto":"Auto","dirAutoSub":"Följer instrumentet: liggande grepptabell faller nedåt","dirHoriz":"⇄ Vågrätt","dirVert":"⇅ Lodrätt","direction":"Riktning","editNotes":"Toner","editNotesSub":"Bokstäver eller solfège. Exempel: C4 D E F G:2 | A*4","faster":"Snabbare","formatHelp":"Hjälp med formatet","formatHelpText":"Ett ord per ton: <code class=\"k\">C4</code> <code class=\"k\">F#4</code> <code class=\"k\">Bb3</code> <code class=\"k\">Ciss</code> <code class=\"k\">do re mi</code>. <code class=\"k\">H</code> och <code class=\"k\">B</code> betyder båda h/B♮ — B♭ skrivs <code class=\"k\">Bb</code> eller <code class=\"k\">Hess</code>.<br>Utan oktavsiffra väljs tonen närmast den föregående.<br>Längd: <code class=\"k\">C:2</code> = två slag, <code class=\"k\">C:.5</code> = åttondel, eller <code class=\"k\">:w :h :q :e :s</code> med punkt för punkterad (<code class=\"k\">:q.</code>).<br>Paus: <code class=\"k\">-</code> · Upprepa: <code class=\"k\">A*4</code> · Fras: <code class=\"k\">|</code> · Radbrytning vid utskrift: <code class=\"k\">||</code> · Båge: <code class=\"k\">C~ C</code>","german":"Tyskt","halfHole":"Halvt hål","hint":"Tryck på en ton för att hoppa dit · piltangenter bläddrar, mellanslag spelar","instrument":"Instrument","intlNames":"Internationella","keyboard":"Markerad tangent","landscape":"Liggande ark","language":"Språk","metronome":"Metronom","nativeNames":"Nationella","noFingering":"inga greppdata","noteNames":"Notnamn","ofTotal":"av {n}","open":"Öppen","openHole":"Öppet hål","outOfRange":"{n} toner ligger utanför registret för {instr}","parseErrors":"Förstod inte: {list}","pause":"Pausa","perLine":"Per rad","pitchView":"Tonhöjd","play":"Spela upp","portrait":"Stående ark","pressed":"Tryck ner","print":"Skriv ut","printLegend":"Svart = nedtryckt / täckt hål · vit = öppen · halvfylld = halvt hål. Ventiler: 1 nederst (närmast dig), 3 överst.","printTip":"Arket här visar exakt det som skrivs ut. Välj ”Standard” marginaler i utskriftsdialogen och stäng av sidhuvud och sidfot.","recorderSystem":"Greppsystem","rest":"Paus","semitones":"halvtoner","settings":"Inställningar","share":"Dela och redigera","showBars":"Visa taktstreck","showFing":"Visa grepp","showOct":"Visa oktavsiffra","slidePos":"Siffran är dragets läge","slower":"Långsammare","songTitle":"Titel","songs":"Sånger","songsNote":"Alla melodier är folkmelodier eller fria. Sångtext ingår inte — använd &w= för egna stavelser.","stringPos":"Sträng och finger i första läget","tempo":"Tempo","tempoDefault":"standard {n}","tempoExact":"Tryck för att skriva in exakt tempo","timeSig":"Taktart","toneSound":"Spela ton","transpose":"Transponera","untitled":"Utan titel","writtenPitch":"Skrivet"}},"da":{"clefs":{"alto":"C-nøgle","bass":"F-nøgle","treble":"G-nøgle"},"families":{"bassoon":"Fagot","celloF":"Cello","clarinet":"Klarinet","dbassF":"Kontrabas","euphonium":"Euphonium","flute":"Fløjte","horn":"Valdhorn","oboe":"Obo","percussion":"Slagtøj","pianoF":"Klaver","recorder":"Blokfløjte","sax":"Saxofon","trombone":"Trombone","trumpet":"Trompet","tuba":"Tuba","violaF":"Bratsch","violinF":"Violin","voiceF":"Sang"},"instrumentGroups":{"brass":"Messingblæsere","other":"Tangenter og slagtøj","strings":"Strygere","woodwind":"Træblæsere"},"instruments":{"altflute":"Altfløjte i G","althorn":"Althorn i E♭","altsax":"Altsaxofon i E♭","barisax":"Barytonsaxofon i E♭","bassklar":"Basklarinet i B♭","basstrombone":"Basbasun","basstromp":"Bastrompet i B♭","blokkfloyte_c":"Blokfløjte i C (sopran)","blokkfloyte_f":"Blokfløjte i F (alt)","cello":"Cello","dbass":"Kontrabas","englhorn":"Engelskhorn i F","eufonium_bb":"Euphonium/baryton i B♭ (G-nøgle)","eufonium_c":"Euphonium (basnøgle)","fagott":"Fagot","flute":"Fløjte","flygelhorn":"Flygelhorn i B♭","horn_f":"Valdhorn i F","klar_a":"Klarinet i A","klar_bb":"Klarinet i B♭","klar_eb":"Klarinet i E♭","klokkespill":"Klokkespil","kontrafag":"Kontrafagot","kornett_bb":"Kornet i B♭","kornett_eb":"Soprankornet i E♭","oboe":"Obo","pauker":"Pauker","piano":"Klaver","piccolo":"Piccolofløjte","picctromp":"Piccolotrompet i B♭","sang":"Sang","sopransax":"Sopransaxofon i B♭","tenorsax":"Tenorsaxofon i B♭","trombone":"Basun","tromp_bb":"Trompet i B♭","tromp_c":"Trompet i C","tromp_d":"Trompet i D","tromp_eb":"Trompet i E♭","tuba":"Tuba (basnøgle)","tuba_bb":"Tuba i B♭ (G-nøgle, brassband)","tuba_eb":"Tuba i E♭ (G-nøgle, brassband)","viola":"Bratsch","violin":"Violin","xylofon":"Xylofon"},"meta":{"lang":"da","name":"Dansk"},"songs":{"src":{"beethoven":"Beethoven 1824 · fri brug","exercise":"Øvelse","pierpont":"J. Pierpont 1857 · fri brug","trad":"Folkemelodi · fri brug"}},"ui":{"about":"<a href=\"https://github.com/punnerud/visualnotes\" target=\"_blank\" rel=\"noopener\">Kildekode på GitHub</a> · MIT-licens","ai":"AI-prompt","aiCopy":"Kopiér prompt","aiHint":"Indsæt i ChatGPT, Claude eller Gemini. Du kan vedhæfte et billede eller en PDF med noderne i samme besked. Beskrivelsen af notationen er på engelsk — den forstår modellerne bedst.","aiInclude":"Tag udgangspunkt i denne melodi:","aiIncludeBtn":"♪ Tag melodien, der vises nu, med","aiIntro":"Du er en musikassistent, der laver øvelseslinks til visualnotes.\n\nMin opgave:\n{wish}\n\nHar jeg vedhæftet et billede eller en PDF med noder, skal du læse melodien derfra.\nBeder jeg om en melodi: svar med ét enkelt URL og intet andet — ingen forklaring, ingen kodeblok.\nSpørger jeg om noget andet, svar kort på dansk, og vedlæg et link hvis det hjælper.\nEr noget uklart, så vælg det mest sandsynlige.","aiPlaceholder":"F.eks. »lav melodien til Mester Jakob i 3/4« eller »læs noderne i den PDF, jeg vedhæfter«","aiWish":"Hvad vil du have?","aiWishDefault":"Lav et øvelseslink til melodien, jeg vedhæfter.","air":"Luft mellem noderne","all":"Alle","apply":"Anvend","autoAdvance":"Automatisk skift","autoAdvanceSub":"Starter afspilning når siden åbnes","baroque":"Barok","concertPitch":"Klingende","copied":"Kopieret ✓","copyFail":"Kunne ikke kopiere","copyLink":"Kopiér link","countIn":"Tæl ind (4 slag)","covered":"Dækket hul","dirAuto":"Auto","dirAutoSub":"Følger instrumentet: liggende grebdiagram falder nedad","dirHoriz":"⇄ Vandret","dirVert":"⇅ Lodret","direction":"Retning","editNotes":"Toner","editNotesSub":"Bogstaver eller solfège. Eksempel: C4 D E F G:2 | A*4","faster":"Hurtigere","formatHelp":"Hjælp til formatet","formatHelpText":"Ét ord per tone: <code class=\"k\">C4</code> <code class=\"k\">F#4</code> <code class=\"k\">Bb3</code> <code class=\"k\">Cis</code> <code class=\"k\">do re mi</code>. <code class=\"k\">H</code> og <code class=\"k\">B</code> betyder begge h/B♮ — B♭ skrives <code class=\"k\">Bb</code> eller <code class=\"k\">Hes</code>.<br>Uden oktavtal vælges tonen nærmest den forrige.<br>Længde: <code class=\"k\">C:2</code> = to slag, <code class=\"k\">C:.5</code> = ottendedel, eller <code class=\"k\">:w :h :q :e :s</code> med punktum for punkteret (<code class=\"k\">:q.</code>).<br>Pause: <code class=\"k\">-</code> · Gentag: <code class=\"k\">A*4</code> · Frase: <code class=\"k\">|</code> · Linjeskift ved udskrift: <code class=\"k\">||</code> · Bindebue: <code class=\"k\">C~ C</code>","german":"Tysk","halfHole":"Halvt hul","hint":"Tryk på en tone for at springe dertil · piletaster blader, mellemrum afspiller","instrument":"Instrument","intlNames":"Internationale","keyboard":"Markeret tangent","landscape":"Liggende ark","language":"Sprog","metronome":"Metronom","nativeNames":"Nationale","noFingering":"ingen grebdata","noteNames":"Nodenavne","ofTotal":"af {n}","open":"Åben","openHole":"Åbent hul","outOfRange":"{n} toner ligger uden for registret på {instr}","parseErrors":"Forstod ikke: {list}","pause":"Pause","perLine":"Per linje","pitchView":"Tonehøjde","play":"Afspil","portrait":"Stående ark","pressed":"Tryk ned","print":"Udskriv","printLegend":"Sort = trykket ned / dækket hul · hvid = åben · halvt fyldt = halvt hul. Ventiler: 1 nederst (nærmest dig), 3 øverst.","printTip":"Arket her viser præcis det, der kommer ud. Vælg »Standard« margener i udskriftsdialogen, og slå sidehoved og sidefod fra.","recorderSystem":"Grebsystem","rest":"Pause","semitones":"halvtoner","settings":"Indstillinger","share":"Del og rediger","showBars":"Vis taktstreger","showFing":"Vis greb","showOct":"Vis oktavtal","slidePos":"Tallet er positionen på trækket","slower":"Langsommere","songTitle":"Titel","songs":"Sange","songsNote":"Alle melodier er folkemelodier eller fri brug. Sangtekst er ikke med — brug &w= til egne stavelser.","stringPos":"Streng og finger i 1. position","tempo":"Tempo","tempoDefault":"standard {n}","tempoExact":"Tryk for at skrive et præcist tempo","timeSig":"Taktart","toneSound":"Spil tone","transpose":"Transponér","untitled":"Uden titel","writtenPitch":"Skrevet"}},"en":{"clefs":{"alto":"Alto clef","bass":"Bass clef","treble":"Treble clef"},"families":{"bassoon":"Bassoon","celloF":"Cello","clarinet":"Clarinet","dbassF":"Double bass","euphonium":"Euphonium","flute":"Flute","horn":"French horn","oboe":"Oboe","percussion":"Percussion","pianoF":"Piano","recorder":"Recorder","sax":"Saxophone","trombone":"Trombone","trumpet":"Trumpet","tuba":"Tuba","violaF":"Viola","violinF":"Violin","voiceF":"Voice"},"instrumentGroups":{"brass":"Brass","other":"Keyboard and percussion","strings":"Strings","woodwind":"Woodwinds"},"instruments":{"altflute":"Alto flute in G","althorn":"Tenor horn in E♭","altsax":"Alto saxophone in E♭","barisax":"Baritone saxophone in E♭","bassklar":"Bass clarinet in B♭","basstrombone":"Bass trombone","basstromp":"Bass trumpet in B♭","blokkfloyte_c":"Descant recorder in C","blokkfloyte_f":"Treble recorder in F","cello":"Cello","dbass":"Double bass","englhorn":"English horn in F","eufonium_bb":"Euphonium/baritone in B♭ (treble clef)","eufonium_c":"Euphonium (bass clef)","fagott":"Bassoon","flute":"Flute","flygelhorn":"Flugelhorn in B♭","horn_f":"French horn in F","klar_a":"Clarinet in A","klar_bb":"Clarinet in B♭","klar_eb":"Clarinet in E♭","klokkespill":"Glockenspiel","kontrafag":"Contrabassoon","kornett_bb":"Cornet in B♭","kornett_eb":"Soprano cornet in E♭","oboe":"Oboe","pauker":"Timpani","piano":"Piano","piccolo":"Piccolo","picctromp":"Piccolo trumpet in B♭","sang":"Voice","sopransax":"Soprano saxophone in B♭","tenorsax":"Tenor saxophone in B♭","trombone":"Trombone","tromp_bb":"Trumpet in B♭","tromp_c":"Trumpet in C","tromp_d":"Trumpet in D","tromp_eb":"Trumpet in E♭","tuba":"Tuba (bass clef)","tuba_bb":"Tuba in B♭ (treble clef, brass band)","tuba_eb":"Tuba in E♭ (treble clef, brass band)","viola":"Viola","violin":"Violin","xylofon":"Xylophone"},"meta":{"lang":"en","name":"English"},"songs":{"src":{"beethoven":"Beethoven 1824 · public domain","exercise":"Exercise","pierpont":"J. Pierpont 1857 · public domain","trad":"Traditional · public domain"}},"ui":{"about":"<a href=\"https://github.com/punnerud/visualnotes\" target=\"_blank\" rel=\"noopener\">Source on GitHub</a> · MIT licence","ai":"AI prompt","aiCopy":"Copy prompt","aiHint":"Paste it into ChatGPT, Claude or Gemini. You can attach an image or a PDF of the score in the same message. The notation reference is in English, which the models handle best.","aiInclude":"Start from this melody:","aiIncludeBtn":"♪ Include the melody shown now","aiIntro":"You are a music assistant who builds practice links for visualnotes.\n\nMy task:\n{wish}\n\nIf I attached an image or a PDF of sheet music, read the melody from it.\nIf I ask for a melody: answer with a single URL and nothing else — no explanation, no code block.\nIf I ask about something else, answer briefly and add a link if it helps.\nIf anything is unclear, pick the most likely reading.","aiPlaceholder":"E.g. \"make the melody for Frère Jacques in 3/4\" or \"read the notes in the PDF I attach\"","aiWish":"What do you want?","aiWishDefault":"Make a practice link for the melody I attach.","air":"Space between notes","all":"All","apply":"Apply","autoAdvance":"Auto-advance","autoAdvanceSub":"Starts playback when the page opens","baroque":"Baroque","concertPitch":"Concert","copied":"Copied ✓","copyFail":"Could not copy","copyLink":"Copy link","countIn":"Count in (4 beats)","covered":"Covered hole","dirAuto":"Auto","dirAutoSub":"Follows the instrument: a wide chart falls downwards","dirHoriz":"⇄ Sideways","dirVert":"⇅ Falling","direction":"Direction","editNotes":"Notes","editNotesSub":"Letters or solfège. Example: C4 D E F G:2 | A*4","faster":"Faster","formatHelp":"Format help","formatHelpText":"One word per note: <code class=\"k\">C4</code> <code class=\"k\">F#4</code> <code class=\"k\">Bb3</code> <code class=\"k\">Cis</code> <code class=\"k\">do re mi</code>. Both <code class=\"k\">H</code> and <code class=\"k\">B</code> mean B♮ — write B♭ as <code class=\"k\">Bb</code> or <code class=\"k\">Hes</code>.<br>Without an octave digit the note nearest the previous one is chosen.<br>Length: <code class=\"k\">C:2</code> = two beats, <code class=\"k\">C:.5</code> = eighth, or <code class=\"k\">:w :h :q :e :s</code> with a dot for dotted (<code class=\"k\">:q.</code>).<br>Rest: <code class=\"k\">-</code> · Repeat: <code class=\"k\">A*4</code> · Phrase: <code class=\"k\">|</code> · Line break when printing: <code class=\"k\">||</code> · Tie: <code class=\"k\">C~ C</code>","german":"German","halfHole":"Half hole","hint":"Tap a note to jump there · arrow keys browse, space plays","instrument":"Instrument","intlNames":"International","keyboard":"Highlighted key","landscape":"Landscape","language":"Language","metronome":"Metronome","nativeNames":"Traditional","noFingering":"no chart","noteNames":"Note names","ofTotal":"of {n}","open":"Open","openHole":"Open hole","outOfRange":"{n} notes are outside the range of the {instr}","parseErrors":"Could not read: {list}","pause":"Pause","perLine":"Per line","pitchView":"Pitch","play":"Play","portrait":"Portrait","pressed":"Pressed","print":"Print","printLegend":"Black = pressed / covered · white = open · half filled = half hole. Valves: 1 at the bottom (nearest you), 3 at the top.","printTip":"This sheet shows exactly what gets printed. Choose \"Default\" margins in the print dialog and turn off headers and footers.","recorderSystem":"Fingering system","rest":"Rest","semitones":"semitones","settings":"Settings","share":"Share and edit","showBars":"Show bar lines","showFing":"Show fingering","showOct":"Show octave number","slidePos":"The number is the slide position","slower":"Slower","songTitle":"Title","songs":"Songs","songsNote":"Every melody is traditional or public domain. Lyrics are not included — use &w= for your own syllables.","stringPos":"String and finger, first position","tempo":"Tempo","tempoDefault":"default {n}","tempoExact":"Tap to type an exact tempo","timeSig":"Time signature","toneSound":"Play the note","transpose":"Transpose","untitled":"Untitled","writtenPitch":"Written"}}};
 const LANG_ORDER = ['no', 'sv', 'da', 'en'];
 // gss = norsk/svensk (H, Ess, Aiss ...), gs = dansk/tysk (H, Es, As), letters = engelsk
 const NOTE_SYSTEMS = { no: 'gss', sv: 'gss', da: 'gs', en: 'letters' };
@@ -989,6 +1034,13 @@ function chartRange(ins) {
   const r = (lo === null) ? { lo: ins.lo, hi: ins.hi } : { lo, hi };
   CHART_RANGE_CACHE[key] = r;
   return r;
+}
+
+/* Diagrammer som ligger på tvers. For dem faller tonene nedover i stedet for
+   å gli sidelengs, slik at den brede tegningen får plass. */
+const WIDE_CHARTS = { keys: 1, slide: 1 };
+function defaultDirection(ins) {
+  return (ins && ins.fing && WIDE_CHARTS[ins.fing]) ? 'v' : 'h';
 }
 
 /* ================================================================
@@ -1551,6 +1603,8 @@ function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '
 function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
 
 function curInstr() { return INSTR_BY_ID[state.instrId] || INSTR_BY_ID.tromp_bb; }
+/* 'h' = tonene glir sidelengs, 'v' = de faller nedover. Auto følger instrumentet. */
+function curDir() { return state.dir === 'h' || state.dir === 'v' ? state.dir : defaultDirection(curInstr()); }
 /* Tonen slik den skal leses på valgt instrument.
    state.pitchMode = 'written': tokenene ER det spilleren leser (standard).
    state.pitchMode = 'concert': tokenene er klingende, og transponeres til instrumentet. */
@@ -1595,14 +1649,14 @@ function makeCard(e, i, opts) {
     if (wm < ins.lo || wm > ins.hi) outOfRange = true;
   }
   const width = cardWidth(e, kind);
-  el.style.setProperty('--w', width + 'px');
+  if (!o.vert) el.style.setProperty('--w', width + 'px');
   if (!state.showFing || e.rest) el.classList.add('nofing');
   if (e.rest) el.classList.add('rest');
   if (outOfRange) el.classList.add('out');
 
   const name = e.rest ? '–'
     : esc(dispNote(w)) + (state.showOct ? `<small>${w.oct}</small>` : '');
-  const staff = staffSVG(e.rest ? null : w, e.dur, e.dot, ins.clef, Math.min(width - 8, 150));
+  const staff = staffSVG(e.rest ? null : w, e.dur, e.dot, ins.clef, o.vert ? 150 : Math.min(width - 8, 150));
   const lyric = (state.words && state.words[i]) ? esc(state.words[i]) : '';
   el.innerHTML =
     (state.showFing ? `<div class="fingwrap">${e.rest ? '' : fingHtml}</div>` : '') +
@@ -1623,19 +1677,44 @@ function makeCard(e, i, opts) {
 let cards = [];
 function renderStrip() {
   const strip = $('strip');
+  const vert = curDir() === 'v';
+  strip.classList.toggle('vert', vert);
   strip.innerHTML = '';
   cards = [];
   let outCount = 0;
   const ins = curInstr();
+  let host = strip;
+  if (vert) {
+    // Tida går nedenfra og opp: banen er column-reverse, så tone 0 ligger nederst
+    const lane = document.createElement('div');
+    lane.className = 'vlane'; lane.id = 'vlane';
+    strip.appendChild(lane);
+    const ph = document.createElement('div');
+    ph.className = 'vplayhead';
+    ph.style.top = (V_PLAYHEAD * 100).toFixed(1) + '%';
+    strip.appendChild(ph);
+    host = lane;
+  }
+  const ppb = ppbV();
   state.events.forEach((e, i) => {
-    if (e.bar && state.showBars) {
+    if (!vert && e.bar && state.showBars) {
       const b = document.createElement('div'); b.className = 'barline'; strip.appendChild(b);
     }
-    const el = makeCard(e, i);
-    if (e.phrase === 1) el.classList.add('gap');
-    if (e.phrase === 2) el.classList.add('gap2');
+    const el = makeCard(e, i, { vert });
+    if (vert) {
+      // Høyden er nøyaktig proporsjonal med varigheten — ingen marger som forskyver tida
+      const h = e.beats * ppb;
+      el.style.setProperty('--h', h.toFixed(2) + 'px');
+      if (h < 60) el.classList.add('short');
+      if (h < 34) el.classList.add('tiny');
+      if (e.bar && state.showBars) el.classList.add('barstart');
+      if (e.phrase) el.classList.add('phrasestart');
+    } else {
+      if (e.phrase === 1) el.classList.add('gap');
+      if (e.phrase === 2) el.classList.add('gap2');
+    }
     if (el.classList.contains('out')) outCount++;
-    strip.appendChild(el);
+    host.appendChild(el);
     cards.push(el);
   });
   const warn = $('warn');
@@ -1654,22 +1733,85 @@ function centerCard(el, instant) {
 function go(i, instant) {
   if (!state.events.length) return;
   state.cur = clamp(i, 0, state.events.length - 1);
-  cards.forEach((c, j) => c.classList.toggle('current', j === state.cur));
+  cards.forEach((c, j) => {
+    c.classList.toggle('current', j === state.cur);
+    c.classList.toggle('done', j < state.cur);   // dempes bare i loddrett modus
+  });
   $('pos').textContent = state.cur + 1;
   $('prev').disabled = state.cur === 0;
   $('next').disabled = state.cur === state.events.length - 1;
   paintProgress();
-  centerCard(cards[state.cur], instant);
+  if (curDir() === 'v') positionStripLane(instant);
+  else centerCard(cards[state.cur], instant);
+}
+
+/* ---------------- Loddrett bane ----------------
+   Samme teknikk som tidslinja, men på Y-aksen: banen forskyves i én lineær
+   bevegelse, slik at tonene faller nedover i takt med musikken. */
+const V_PLAYHEAD = 0.72;              // landingslinja, andel ned i vinduet
+let vY = 0;
+function ppbV() { return 60 + state.air * 50; }
+function vOffset(beatPos) {
+  const h = $('strip').clientHeight || 1;
+  return h * V_PLAYHEAD - h + beatPos * ppbV();
+}
+function beatAtOffset(y) {
+  const h = $('strip').clientHeight || 1;
+  return (y - h * V_PLAYHEAD + h) / ppbV();
+}
+function vLaneStyle(transition, y) {
+  const lane = $('vlane');
+  if (!lane) return;
+  vY = y;
+  lane.style.transition = transition;
+  lane.style.transform = 'translateY(' + y.toFixed(1) + 'px)';
+}
+function positionStripLane(instant) {
+  if (!$('vlane')) return;
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  vLaneStyle((instant || reduce) ? 'none' : 'transform .18s ease-out', vOffset(tlStart[state.cur] || 0));
+}
+function glideStrip(from, leadSecs) {
+  if (!$('vlane')) return;
+  const startBeats = tlStart[from] || 0;
+  const secs = (tlTotal - startBeats) * 60 / state.bpm;
+  vLaneStyle('none', vOffset(startBeats));
+  void $('vlane').offsetHeight;
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  vLaneStyle(`transform ${secs.toFixed(3)}s linear ${Math.max(0, leadSecs || 0).toFixed(3)}s`, vOffset(tlTotal));
+}
+function freezeStrip() {
+  const lane = $('vlane');
+  if (!lane) return;
+  const m = getComputedStyle(lane).transform;
+  lane.style.transition = 'none';
+  if (!m || m === 'none') return;
+  lane.style.transform = m;
+  const nums = m.match(/matrix\(([^)]+)\)/);
+  if (nums) vY = parseFloat(nums[1].split(',')[5]);
+}
+/* Etter dra eller hjul: hopp til tonen banen står på */
+function snapStripLane() {
+  if (!$('vlane') || !tlStart.length) return;
+  const b = beatAtOffset(vY);
+  let idx = 0;
+  for (let i = 0; i < tlStart.length; i++) if (tlStart[i] <= b + 1e-6) idx = i;
+  go(clamp(idx, 0, state.events.length - 1));
 }
 
 /* Tidslinje: én bit per tone der bredden er proporsjonal med varigheten.
    Banen glir mot venstre mens sangen spilles, og spillehodet står stille i midten. */
 const TL_PPB = 30;                 // piksler per taktslag
 let pSegs = [], tlStart = [], tlTotal = 0;
+/* Starttidspunkt i taktslag for hver tone. Brukes av både den loddrette
+   banen og tidslinja, så den må regnes ut før begge tegnes. */
+function computeBeatIndex() {
+  tlStart = []; tlTotal = 0;
+  state.events.forEach(e => { tlStart.push(tlTotal); tlTotal += e.beats; });
+}
 function renderProgress() {
   const lane = $('tlane');
   lane.innerHTML = '';
-  tlStart = []; tlTotal = 0;
   pSegs = state.events.map((e, i) => {
     const b = document.createElement('div');
     b.className = 'pseg' + (e.rest ? ' rest' : '');
@@ -1679,8 +1821,6 @@ function renderProgress() {
     const w = e.rest ? T('ui.rest') : dispNote(writtenOf(e));
     b.title = `${i + 1}. ${w} · ${(+e.beats.toFixed(3))}`;
     b.addEventListener('click', () => { stopIfPlaying(); go(i); });
-    tlStart.push(tlTotal);
-    tlTotal += e.beats;
     lane.appendChild(b);
     return b;
   });
@@ -1763,22 +1903,29 @@ function renderLegend() {
 /* Dra tonerekka sidelengs med musa, og bruk hjulet til å bla vannrett.
    Berøring scroller allerede av seg selv, så vi rører bare mus og penn. */
 function setupStripDrag(el) {
-  let down = false, moved = false, pid = null, startX = 0, startLeft = 0, justDragged = false;
+  let down = false, moved = false, pid = null, start = 0, base = 0;
+  let justDragged = false, vertical = false, snapTimer = null;
   el.addEventListener('pointerdown', e => {
-    if ((e.pointerType !== 'mouse' && e.pointerType !== 'pen') || e.button !== 0) return;
+    vertical = curDir() === 'v';
+    // Vannrett har egen rulling for berøring; loddrett må håndtere alt selv
+    if (!vertical && e.pointerType !== 'mouse' && e.pointerType !== 'pen') return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
     down = true; moved = false; pid = e.pointerId;
-    startX = e.clientX; startLeft = el.scrollLeft;
+    start = vertical ? e.clientY : e.clientX;
+    base = vertical ? vY : el.scrollLeft;
   });
   el.addEventListener('pointermove', e => {
     if (!down || e.pointerId !== pid) return;
-    const dx = e.clientX - startX;
+    const d = (vertical ? e.clientY : e.clientX) - start;
     if (!moved) {
-      if (Math.abs(dx) < 5) return;
+      if (Math.abs(d) < 5) return;
       moved = true;
       el.classList.add('grabbing');
+      if (vertical) stopIfPlaying();
       try { el.setPointerCapture(pid); } catch (err) { /* ignorer */ }
     }
-    el.scrollLeft = startLeft - dx;
+    if (vertical) vLaneStyle('none', base + d);
+    else el.scrollLeft = base - d;
     e.preventDefault();
   });
   const end = () => {
@@ -1787,6 +1934,7 @@ function setupStripDrag(el) {
     el.classList.remove('grabbing');
     try { el.releasePointerCapture(pid); } catch (err) { /* ignorer */ }
     justDragged = moved;
+    if (moved && vertical) snapStripLane();
     moved = false;
   };
   el.addEventListener('pointerup', end);
@@ -1800,232 +1948,19 @@ function setupStripDrag(el) {
     e.preventDefault();
   }, true);
   el.addEventListener('wheel', e => {
+    if (curDir() === 'v') {
+      stopIfPlaying();
+      vLaneStyle('none', vY + e.deltaY);
+      clearTimeout(snapTimer);
+      snapTimer = setTimeout(snapStripLane, 140);
+      e.preventDefault();
+      return;
+    }
     if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;   // vannrett hjul virker allerede
     el.scrollLeft += e.deltaY;
     e.preventDefault();
   }, { passive: false });
   el.addEventListener('dragstart', e => e.preventDefault());
-}
-
-/* ---------------- Paneler ---------------- */
-function openSheet(id) { $(id).hidden = false; }
-function closeSheet(id) { $(id).hidden = true; }
-function switchRow(labelKey, subKey, on, onToggle) {
-  const row = document.createElement('div');
-  row.className = 'row';
-  row.innerHTML = `<label>${esc(T(labelKey))}${subKey ? `<span class="sub">${esc(T(subKey))}</span>` : ''}</label>`;
-  const b = document.createElement('button');
-  b.className = 'switch' + (on ? ' on' : '');
-  b.setAttribute('role', 'switch'); b.setAttribute('aria-checked', on ? 'true' : 'false');
-  b.addEventListener('click', () => {
-    const v = !b.classList.contains('on');
-    b.classList.toggle('on', v); b.setAttribute('aria-checked', v ? 'true' : 'false');
-    onToggle(v);
-  });
-  row.appendChild(b);
-  return row;
-}
-function segRow(labelKey, options, value, onPick) {
-  const row = document.createElement('div');
-  row.className = 'row';
-  row.innerHTML = `<label>${esc(T(labelKey))}</label>`;
-  const seg = document.createElement('div');
-  seg.className = 'seg';
-  options.forEach(o => {
-    const b = document.createElement('button');
-    b.textContent = o.label;
-    b.className = o.value === value ? 'on' : '';
-    b.addEventListener('click', () => onPick(o.value));
-    seg.appendChild(b);
-  });
-  row.appendChild(seg);
-  return row;
-}
-function rangeRow(labelKey, min, max, step, value, fmtFn, onInput) {
-  const row = document.createElement('div');
-  row.className = 'row';
-  row.innerHTML = `<label>${esc(T(labelKey))}<span class="sub" data-v>${esc(fmtFn(value))}</span></label>`;
-  const inp = document.createElement('input');
-  inp.type = 'range'; inp.min = min; inp.max = max; inp.step = step; inp.value = value;
-  inp.addEventListener('input', () => {
-    const v = parseFloat(inp.value);
-    row.querySelector('[data-v]').textContent = fmtFn(v);
-    onInput(v);
-  });
-  row.appendChild(inp);
-  return row;
-}
-function renderSettings() {
-  const b = $('setBody');
-  b.innerHTML = '';
-  $('setTitle').textContent = T('ui.settings');
-
-  b.appendChild(segRow('ui.language', LANG_ORDER.map(l => ({ value: l, label: T('meta.name', null) && I18N[l] ? I18N[l].meta.name : l })), state.lang,
-    v => { state.lang = v; saveState(); rebuildAll(); renderSettings(); }));
-
-  // Instrument: gruppe -> familie -> variant
-  const ins = curInstr();
-  const gRow = document.createElement('div');
-  gRow.className = 'row';
-  gRow.innerHTML = `<label>${esc(T('ui.instrument'))}</label>`;
-  const wrap = document.createElement('div');
-  wrap.className = 'seg';
-  const famSel = document.createElement('select');
-  FAMILIES.forEach(f => {
-    const og = famSel.querySelector(`optgroup[data-g="${f.group}"]`) || (() => {
-      const g = document.createElement('optgroup');
-      g.label = T('instrumentGroups.' + f.group); g.dataset.g = f.group; famSel.appendChild(g); return g;
-    })();
-    const o = document.createElement('option');
-    o.value = f.id; o.textContent = T('families.' + f.id) || f.id;
-    if (f.id === ins.family) o.selected = true;
-    og.appendChild(o);
-  });
-  famSel.addEventListener('change', () => {
-    const f = FAMILY_BY_ID[famSel.value];
-    setInstrument(f.std); renderSettings();
-  });
-  const varSel = document.createElement('select');
-  const fam = FAMILY_BY_ID[ins.family];
-  fam.members.forEach(id => {
-    const o = document.createElement('option');
-    o.value = id; o.textContent = instrName(id);
-    if (id === ins.id) o.selected = true;
-    varSel.appendChild(o);
-  });
-  varSel.addEventListener('change', () => { setInstrument(varSel.value); renderSettings(); });
-  wrap.appendChild(famSel);
-  if (fam.members.length > 1) wrap.appendChild(varSel);
-  gRow.appendChild(wrap);
-  b.appendChild(gRow);
-
-  if (ins.family === 'recorder') {
-    b.appendChild(segRow('ui.recorderSystem', [
-      { value: false, label: T('ui.baroque') }, { value: true, label: T('ui.german') },
-    ], state.recorderGerman, v => { state.recorderGerman = v; saveState(); rebuildAll(); renderSettings(); }));
-  }
-  b.appendChild(segRow('ui.noteNames', [
-    { value: 'native', label: T('ui.nativeNames') }, { value: 'intl', label: T('ui.intlNames') },
-  ], state.naming, v => { state.naming = v; saveState(); rebuildAll(); renderSettings(); }));
-
-  if (ins.letters || ins.semis) {
-    b.appendChild(segRow('ui.pitchView', [
-      { value: 'written', label: T('ui.writtenPitch') }, { value: 'concert', label: T('ui.concertPitch') },
-    ], state.pitchMode, v => { state.pitchMode = v; saveState(); rebuildAll(); renderSettings(); syncUrl(); }));
-  }
-  b.appendChild(rangeRow('ui.tempo', BPM_MIN, BPM_MAX, 1, state.bpm, v => v + ' BPM', applyTempo));
-  b.appendChild(switchRow('ui.autoAdvance', 'ui.autoAdvanceSub', state.auto, v => { state.auto = v; saveState(); syncUrl(); }));
-  b.appendChild(switchRow('ui.metronome', null, state.metronome, v => { state.metronome = v; saveState(); syncUrl(); }));
-  b.appendChild(switchRow('ui.toneSound', null, state.tone, v => { state.tone = v; saveState(); syncUrl(); }));
-  b.appendChild(switchRow('ui.countIn', null, state.countIn > 0, v => { state.countIn = v ? 4 : 0; saveState(); syncUrl(); }));
-  b.appendChild(rangeRow('ui.air', 0, 1.6, 0.1, state.air, v => Math.round(v * 100) + ' %', v => { state.air = v; saveState(); renderStrip(); go(state.cur, true); }));
-  b.appendChild(switchRow('ui.showFing', null, state.showFing, v => { state.showFing = v; saveState(); rebuildAll(); }));
-  b.appendChild(switchRow('ui.showBars', null, state.showBars, v => { state.showBars = v; saveState(); rebuildAll(); }));
-  b.appendChild(switchRow('ui.showOct', null, state.showOct, v => { state.showOct = v; saveState(); rebuildAll(); }));
-
-  const tr = document.createElement('div');
-  tr.className = 'row';
-  tr.innerHTML = `<label>${esc(T('ui.transpose'))}<span class="sub">${state.transpose > 0 ? '+' : ''}${state.transpose} ${esc(T('ui.semitones'))}</span></label>`;
-  const seg = document.createElement('div'); seg.className = 'seg';
-  [-12, -1, 0, 1, 12].forEach(d => {
-    const btn = document.createElement('button');
-    btn.textContent = d === 0 ? '0' : (d > 0 ? '+' + d : String(d));
-    btn.addEventListener('click', () => {
-      stopIfPlaying();
-      state.transpose = d === 0 ? 0 : clamp(state.transpose + d, -24, 24);
-      state.transposeLocked = d !== 0;
-      if (d === 0) autoOctave();
-      saveState(); rebuildAll(); renderSettings(); syncUrl();
-    });
-    seg.appendChild(btn);
-  });
-  tr.appendChild(seg); b.appendChild(tr);
-
-  const about = document.createElement('p');
-  about.className = 'hint';
-  about.innerHTML = T('ui.about');
-  b.appendChild(about);
-}
-function renderSongs() {
-  $('songsTitle').textContent = T('ui.songs');
-  const list = $('songList');
-  list.innerHTML = '';
-  SONGS.forEach(s => {
-    const b = document.createElement('button');
-    b.className = 'songitem' + (state.songId === s.id ? ' on' : '');
-    b.innerHTML = `<b>${esc(s.title[state.lang] || s.title.en)}</b><span>${esc(T('songs.src.' + s.src))} · ${esc(s.ts)} · ${s.bpm} BPM</span>`;
-    b.addEventListener('click', () => { loadSong(s.id); closeSheet('songs'); });
-    list.appendChild(b);
-  });
-  $('songsNote').textContent = T('ui.songsNote');
-}
-function renderShare() {
-  $('shareTitle').textContent = T('ui.share');
-  const b = $('shareBody');
-  b.innerHTML = '';
-  const url = buildUrl();
-  const box = document.createElement('div');
-  box.className = 'urlbox'; box.textContent = url;
-  b.appendChild(box);
-  const row = document.createElement('div');
-  row.className = 'btnrow';
-  const copy = document.createElement('button');
-  copy.className = 'gold'; copy.textContent = T('ui.copyLink');
-  copy.addEventListener('click', async () => {
-    try { await navigator.clipboard.writeText(url); copy.textContent = T('ui.copied'); }
-    catch (e) { copy.textContent = T('ui.copyFail'); }
-    setTimeout(() => { copy.textContent = T('ui.copyLink'); }, 1600);
-  });
-  row.appendChild(copy);
-  b.appendChild(row);
-
-  const h = document.createElement('div');
-  h.className = 'row';
-  h.innerHTML = `<label>${esc(T('ui.editNotes'))}<span class="sub">${esc(T('ui.editNotesSub'))}</span></label>`;
-  b.appendChild(h);
-  const ta = document.createElement('textarea');
-  ta.value = state.sourceText;
-  ta.spellcheck = false;
-  b.appendChild(ta);
-  const ti = document.createElement('div');
-  ti.className = 'row';
-  ti.innerHTML = `<label>${esc(T('ui.songTitle'))}</label>`;
-  const tin = document.createElement('input');
-  tin.type = 'text'; tin.value = state.title;
-  ti.appendChild(tin); b.appendChild(ti);
-  const tsRow = document.createElement('div');
-  tsRow.className = 'row';
-  tsRow.innerHTML = `<label>${esc(T('ui.timeSig'))}</label>`;
-  const tsIn = document.createElement('input');
-  tsIn.type = 'text'; tsIn.value = state.ts; tsIn.style.width = '90px';
-  tsRow.appendChild(tsIn); b.appendChild(tsRow);
-
-  const row2 = document.createElement('div');
-  row2.className = 'btnrow';
-  const apply = document.createElement('button');
-  apply.className = 'gold'; apply.textContent = T('ui.apply');
-  apply.addEventListener('click', () => {
-    state.title = tin.value.trim();
-    state.ts = /^\d+\s*\/\s*\d+$/.test(tsIn.value.trim()) ? tsIn.value.trim().replace(/\s/g, '') : state.ts;
-    setSource(ta.value);
-    renderShare();
-  });
-  row2.appendChild(apply);
-  const help = document.createElement('button');
-  help.textContent = T('ui.formatHelp');
-  help.addEventListener('click', () => { helpEl.hidden = !helpEl.hidden; });
-  row2.appendChild(help);
-  b.appendChild(row2);
-  const helpEl = document.createElement('p');
-  helpEl.className = 'hint'; helpEl.hidden = true;
-  helpEl.style.textAlign = 'left';
-  helpEl.innerHTML = T('ui.formatHelpText');
-  b.appendChild(helpEl);
-  const err = document.createElement('p');
-  err.className = 'warn';
-  err.textContent = state.parseErrors.length ? T('ui.parseErrors', { list: state.parseErrors.slice(0, 8).join(' ') }) : '';
-  err.hidden = !state.parseErrors.length;
-  b.appendChild(err);
 }
 
 /* ---------------- AI-prompt ----------------
@@ -2264,11 +2199,11 @@ const DEFAULTS = {
   lang: 'no', instrId: 'tromp_bb', naming: 'native', pitchMode: 'written', recorderGerman: false,
   bpm: 100, ts: '4/4', upbeat: 0, auto: false, metronome: true, tone: true, countIn: 4,
   air: 0.6, showFing: true, showBars: true, showOct: true, transpose: 0,
-  pRows: 11, pZoom: 0.8, pLand: true,
+  dir: 'auto', pRows: 11, pZoom: 0.8, pLand: true,
 };
 const PERSIST = ['lang', 'instrId', 'naming', 'pitchMode', 'recorderGerman', 'bpm', 'auto',
                  'metronome', 'tone', 'countIn', 'air', 'showFing', 'showBars', 'showOct',
-                 'pRows', 'pZoom', 'pLand'];
+                 'dir', 'pRows', 'pZoom', 'pLand'];
 const state = Object.assign({}, DEFAULTS, {
   title: '', songId: null, sourceText: '', events: [], cur: 0, words: null, parseErrors: [],
   transposeLocked: false, bpmDefault: 100, aiWish: '',
@@ -2353,6 +2288,7 @@ function rebuildAll() {
     state.title = SONG_BY_ID[state.songId].title[state.lang] || SONG_BY_ID[state.songId].title.en;
   }
   state.events = markBars(state.events, state.ts, state.upbeat);
+  computeBeatIndex();
   renderStrip();
   renderProgress();
   renderLegend();
@@ -2379,6 +2315,7 @@ function applyQuery(q) {
   if (q.p === 'w' || q.p === 'written') state.pitchMode = 'written';
   if (q.k) { state.transpose = clamp(parseInt(q.k, 10) || 0, -24, 24); state.transposeLocked = true; }
   if (q.n === 'intl' || q.n === 'native') state.naming = q.n;
+  if (q.dir === 'auto' || q.dir === 'h' || q.dir === 'v') state.dir = q.dir;
   ['auto', 'met', 'tone'].forEach(k => {
     if (q[k] !== undefined) {
       const v = q[k] !== '0' && q[k] !== 'false';
@@ -2421,6 +2358,7 @@ function buildUrl() {
   if (state.upbeat) add('up', state.upbeat);
   if (state.bpm !== DEFAULTS.bpm) add('bpm', state.bpm);
   if (state.pitchMode !== 'written') add('p', 'c');
+  if (state.dir !== 'auto') add('dir', state.dir);
   if (state.transpose) add('k', state.transpose);
   if (state.auto !== DEFAULTS.auto) add('auto', state.auto ? 1 : 0);
   if (state.metronome !== DEFAULTS.metronome) add('met', state.metronome ? 1 : 0);
@@ -2433,7 +2371,8 @@ function syncUrl() {
 }
 
 /* ---------------- Avspilling ---------------- */
-function stopIfPlaying() { if (player.playing) { stopPlayback(); freezeTimeline(); updatePlayBtn(); } }
+function freezeLanes() { freezeTimeline(); freezeStrip(); }
+function stopIfPlaying() { if (player.playing) { stopPlayback(); freezeLanes(); updatePlayBtn(); } }
 function updatePlayBtn() {
   const b = $('playBtn');
   b.textContent = player.playing ? '⏸' : '▶';
@@ -2444,7 +2383,7 @@ function beginPlayback(from, countIn) {
   if (!state.events.length) return false;
   const ins = curInstr();
   player.onNote = i => { go(i); flash(i); };
-  player.onStop = () => { updatePlayBtn(); freezeTimeline(); };
+  player.onStop = () => { updatePlayBtn(); freezeLanes(); };
   const sounding = state.events.map(e => Object.assign({}, e, { midi: e.rest ? null : soundingMidi(e) }));
   const ok = startPlayback(sounding, {
     bpm: state.bpm, ts: state.ts, upbeat: state.upbeat, from: from || 0,
@@ -2453,11 +2392,15 @@ function beginPlayback(from, countIn) {
     transpose: 0, group: ins.group,
   });
   updatePlayBtn();
-  if (ok) glideTimeline(from || 0, AC ? player.t0 - AC.currentTime : 0);
+  if (ok) {
+    const lead = AC ? player.t0 - AC.currentTime : 0;
+    if (curDir() === 'v') glideStrip(from || 0, lead);
+    else glideTimeline(from || 0, lead);
+  }
   return ok;
 }
 function playPause() {
-  if (player.playing) { stopPlayback(); freezeTimeline(); updatePlayBtn(); return; }
+  if (player.playing) { stopPlayback(); freezeLanes(); updatePlayBtn(); return; }
   go(0, true);                       // ▶ spiller alltid sangen fra begynnelsen
   beginPlayback(0);
 }
@@ -2542,13 +2485,15 @@ function init() {
     }
     if (openSheetEl || !$('printview').hidden) return;
     if (/^(INPUT|TEXTAREA|SELECT)$/.test((e.target && e.target.tagName) || '')) return;
-    if (e.key === 'ArrowRight') { e.preventDefault(); stopIfPlaying(); go(state.cur + 1); }
-    else if (e.key === 'ArrowLeft') { e.preventDefault(); stopIfPlaying(); go(state.cur - 1); }
+    // I loddrett modus ligger neste tone over, så Opp = neste
+    if (e.key === 'ArrowRight' || e.key === 'ArrowUp') { e.preventDefault(); stopIfPlaying(); go(state.cur + 1); }
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') { e.preventDefault(); stopIfPlaying(); go(state.cur - 1); }
     else if (e.key === ' ') { e.preventDefault(); playPause(); }
   });
   window.addEventListener('resize', () => {
-    centerCard(cards[state.cur], true);
-    if (!player.playing) syncTimeline(true);
+    if (player.playing) return;
+    if (curDir() === 'v') positionStripLane(true);
+    else { centerCard(cards[state.cur], true); syncTimeline(true); }
   });
   setupStripDrag($('strip'));
 

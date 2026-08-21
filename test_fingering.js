@@ -115,7 +115,6 @@ for (const id of ['tromp_bb', 'altsax', 'blokkfloyte_c', 'trombone', 'piano', 'v
 }
 ok(c.fingeringFor(I.fagott, 50) === null, 'fagott har ingen grepdata (dokumentert)');
 
-done('test_fingering');
 
 /* --- registeret der grepdata finnes --- */
 const R = id => c.chartRange(I[id]);
@@ -124,3 +123,11 @@ eq(R('cello').hi, 62, 'cello 1. posisjon slutter på D4');
 eq(R('tromp_bb'), { lo: 54, hi: 91 }, 'trompet dekker hele registeret');
 eq(R('altsax'), { lo: 58, hi: 85 }, 'saksofon B♭3–C♯6');
 eq(R('fagott'), { lo: 34, hi: 64 }, 'uten grepdata brukes instrumentets register');
+
+/* --- retning: loddrett når grepdiagrammet ligger på tvers --- */
+['piano', 'klokkespill', 'xylofon', 'trombone', 'basstrombone']
+  .forEach(id => eq(c.defaultDirection(I[id]), 'v', id + ' faller nedover'));
+['tromp_bb', 'kornett_bb', 'altsax', 'blokkfloyte_c', 'klar_bb', 'flute', 'violin', 'cello', 'fagott', 'horn_f']
+  .forEach(id => eq(c.defaultDirection(I[id]), 'h', id + ' glir sidelengs'));
+
+done('test_fingering');

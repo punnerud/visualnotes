@@ -35,6 +35,18 @@ hvor lenge tonen varer — så du ser hvor lang neste tone er før du kommer dit
 linja mot venstre i takt med musikken, mens spillehodet står stille midt under tonen som spilles. Trykk
 på en bit for å hoppe dit.
 
+### Retning
+
+Instrumenter med grepdiagram på høykant — trompet, blokkfløyte, saksofon, fløyte, klarinett, strykere —
+viser tonene på rekke som glir sidelengs. For **piano, klokkespill, xylofon og trombone** ligger
+diagrammet på tvers, og da faller tonene i stedet nedover som i Guitar Hero: kommende toner ligger over,
+hele banen glir nedover i takt med musikken, og tonen som spilles står på landingslinja. Høyden på hver
+blokk er nøyaktig proporsjonal med varigheten. Åttedeler og kortere blir for lave til grepdiagram og
+viser bare bokstav og note.
+
+Standarden følger instrumentet, men kan overstyres i innstillingene eller med `dir=h` / `dir=v`. I
+fallende modus er piltast opp neste tone og ned forrige, og banen kan dras med musa eller fingeren.
+
 **Utskrift** (🖨) viser arket i faktisk størrelse med de samme margene som skrives ut, så
 forhåndsvisningen er det du får. Standard er liggende A4 på 80 %. En linje med toner deles aldri over
 et sideskift. Velg «Standard» marger i utskriftsdialogen og slå av topp- og bunntekst.
@@ -62,6 +74,7 @@ Alt kan settes med GET-parametere. Korte navn er de kanoniske; de lange i parent
 | `met` | metronom av/på | `1` |
 | `tone` | spill tonen av/på | `1` |
 | `count` | antall opptellingsslag før start | `4` |
+| `dir` | retning: `auto`, `h` (sidelengs) eller `v` (fallende) | `auto` |
 | `air` | luft mellom notene, `0`–`1.6` | `0.6` |
 | `fing` | `0` skjuler grepdiagrammene | `1` |
 | `bars` | `0` skjuler taktstrekene | `1` |

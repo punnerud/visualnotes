@@ -6,11 +6,11 @@ const DEFAULTS = {
   lang: 'no', instrId: 'tromp_bb', naming: 'native', pitchMode: 'written', recorderGerman: false,
   bpm: 100, ts: '4/4', upbeat: 0, auto: false, metronome: true, tone: true, countIn: 4,
   air: 0.6, showFing: true, showBars: true, showOct: true, transpose: 0,
-  pRows: 11, pZoom: 0.8, pLand: true,
+  dir: 'auto', pRows: 11, pZoom: 0.8, pLand: true,
 };
 const PERSIST = ['lang', 'instrId', 'naming', 'pitchMode', 'recorderGerman', 'bpm', 'auto',
                  'metronome', 'tone', 'countIn', 'air', 'showFing', 'showBars', 'showOct',
-                 'pRows', 'pZoom', 'pLand'];
+                 'dir', 'pRows', 'pZoom', 'pLand'];
 const state = Object.assign({}, DEFAULTS, {
   title: '', songId: null, sourceText: '', events: [], cur: 0, words: null, parseErrors: [],
   transposeLocked: false, bpmDefault: 100, aiWish: '',
@@ -95,6 +95,7 @@ function rebuildAll() {
     state.title = SONG_BY_ID[state.songId].title[state.lang] || SONG_BY_ID[state.songId].title.en;
   }
   state.events = markBars(state.events, state.ts, state.upbeat);
+  computeBeatIndex();
   renderStrip();
   renderProgress();
   renderLegend();
@@ -121,6 +122,7 @@ function applyQuery(q) {
   if (q.p === 'w' || q.p === 'written') state.pitchMode = 'written';
   if (q.k) { state.transpose = clamp(parseInt(q.k, 10) || 0, -24, 24); state.transposeLocked = true; }
   if (q.n === 'intl' || q.n === 'native') state.naming = q.n;
+  if (q.dir === 'auto' || q.dir === 'h' || q.dir === 'v') state.dir = q.dir;
   ['auto', 'met', 'tone'].forEach(k => {
     if (q[k] !== undefined) {
       const v = q[k] !== '0' && q[k] !== 'false';
@@ -163,6 +165,7 @@ function buildUrl() {
   if (state.upbeat) add('up', state.upbeat);
   if (state.bpm !== DEFAULTS.bpm) add('bpm', state.bpm);
   if (state.pitchMode !== 'written') add('p', 'c');
+  if (state.dir !== 'auto') add('dir', state.dir);
   if (state.transpose) add('k', state.transpose);
   if (state.auto !== DEFAULTS.auto) add('auto', state.auto ? 1 : 0);
   if (state.metronome !== DEFAULTS.metronome) add('met', state.metronome ? 1 : 0);
@@ -175,7 +178,8 @@ function syncUrl() {
 }
 
 /* ---------------- Avspilling ---------------- */
-function stopIfPlaying() { if (player.playing) { stopPlayback(); freezeTimeline(); updatePlayBtn(); } }
+function freezeLanes() { freezeTimeline(); freezeStrip(); }
+function stopIfPlaying() { if (player.playing) { stopPlayback(); freezeLanes(); updatePlayBtn(); } }
 function updatePlayBtn() {
   const b = $('playBtn');
   b.textContent = player.playing ? '⏸' : '▶';
@@ -186,7 +190,7 @@ function beginPlayback(from, countIn) {
   if (!state.events.length) return false;
   const ins = curInstr();
   player.onNote = i => { go(i); flash(i); };
-  player.onStop = () => { updatePlayBtn(); freezeTimeline(); };
+  player.onStop = () => { updatePlayBtn(); freezeLanes(); };
   const sounding = state.events.map(e => Object.assign({}, e, { midi: e.rest ? null : soundingMidi(e) }));
   const ok = startPlayback(sounding, {
     bpm: state.bpm, ts: state.ts, upbeat: state.upbeat, from: from || 0,
@@ -195,11 +199,15 @@ function beginPlayback(from, countIn) {
     transpose: 0, group: ins.group,
   });
   updatePlayBtn();
-  if (ok) glideTimeline(from || 0, AC ? player.t0 - AC.currentTime : 0);
+  if (ok) {
+    const lead = AC ? player.t0 - AC.currentTime : 0;
+    if (curDir() === 'v') glideStrip(from || 0, lead);
+    else glideTimeline(from || 0, lead);
+  }
   return ok;
 }
 function playPause() {
-  if (player.playing) { stopPlayback(); freezeTimeline(); updatePlayBtn(); return; }
+  if (player.playing) { stopPlayback(); freezeLanes(); updatePlayBtn(); return; }
   go(0, true);                       // ▶ spiller alltid sangen fra begynnelsen
   beginPlayback(0);
 }
@@ -284,13 +292,15 @@ function init() {
     }
     if (openSheetEl || !$('printview').hidden) return;
     if (/^(INPUT|TEXTAREA|SELECT)$/.test((e.target && e.target.tagName) || '')) return;
-    if (e.key === 'ArrowRight') { e.preventDefault(); stopIfPlaying(); go(state.cur + 1); }
-    else if (e.key === 'ArrowLeft') { e.preventDefault(); stopIfPlaying(); go(state.cur - 1); }
+    // I loddrett modus ligger neste tone over, så Opp = neste
+    if (e.key === 'ArrowRight' || e.key === 'ArrowUp') { e.preventDefault(); stopIfPlaying(); go(state.cur + 1); }
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') { e.preventDefault(); stopIfPlaying(); go(state.cur - 1); }
     else if (e.key === ' ') { e.preventDefault(); playPause(); }
   });
   window.addEventListener('resize', () => {
-    centerCard(cards[state.cur], true);
-    if (!player.playing) syncTimeline(true);
+    if (player.playing) return;
+    if (curDir() === 'v') positionStripLane(true);
+    else { centerCard(cards[state.cur], true); syncTimeline(true); }
   });
   setupStripDrag($('strip'));
 

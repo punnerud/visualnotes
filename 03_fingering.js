@@ -385,3 +385,10 @@ function chartRange(ins) {
   CHART_RANGE_CACHE[key] = r;
   return r;
 }
+
+/* Diagrammer som ligger på tvers. For dem faller tonene nedover i stedet for
+   å gli sidelengs, slik at den brede tegningen får plass. */
+const WIDE_CHARTS = { keys: 1, slide: 1 };
+function defaultDirection(ins) {
+  return (ins && ins.fing && WIDE_CHARTS[ins.fing]) ? 'v' : 'h';
+}
