@@ -99,22 +99,37 @@
     background:var(--navy-deep);border-top:1px solid rgba(251,247,238,.12);
     box-shadow:0 -8px 20px rgba(0,0,0,.3);
   }
-  .progress{
-    align-self:stretch;display:flex;align-items:stretch;gap:2px;
-    height:12px;margin:0 2px 2px;
+  /* Tidslinje: glir mot venstre under notene, bredden viser hvor lenge tonen varer */
+  .timeline{
+    position:relative;height:23px;margin:0 0 10px;overflow:hidden;
+    -webkit-mask-image:linear-gradient(90deg,transparent,#000 7%,#000 93%,transparent);
+            mask-image:linear-gradient(90deg,transparent,#000 7%,#000 93%,transparent);
   }
+  /* Ingen mellomrom mellom bitene: da er posisjonen nøyaktig proporsjonal med tiden.
+     Skillet mellom toner tegnes som en innfelt strek inni biten. */
+  .tlane{position:absolute;left:0;top:6px;height:17px;display:flex;will-change:transform}
   .pseg{
-    flex:0 1 auto;min-width:3px;border-radius:3px;overflow:hidden;cursor:pointer;
+    flex:0 0 auto;border-radius:2px;cursor:pointer;
     background:rgba(251,247,238,.20);transition:background .15s ease;
+    box-shadow:inset -2px 0 0 var(--navy-deep);
   }
   .pseg.rest{background:rgba(251,247,238,.07)}
-  .pseg:hover{background:rgba(251,247,238,.38)}
-  .pseg.barstart{margin-left:5px}
-  .pseg.phrasestart{margin-left:9px}
-  .pseg.done > i{background:rgba(242,178,52,.5)}
-  .pseg.on > i{background:var(--gold);box-shadow:0 0 8px rgba(242,178,52,.7)}
-  .pseg > i{display:block;height:100%;width:0;background:var(--gold);border-radius:3px}
-  .pseg.rest > i{background:rgba(242,178,52,.28)}
+  .pseg:hover{background:rgba(251,247,238,.45)}
+  .pseg.barstart{box-shadow:inset -2px 0 0 var(--navy-deep),inset 3px 0 0 rgba(251,247,238,.55)}
+  .pseg.phrasestart{box-shadow:inset -2px 0 0 var(--navy-deep),inset 3px 0 0 rgba(251,247,238,.3)}
+  .pseg.done{background:rgba(242,178,52,.45)}
+  .pseg.done.rest{background:rgba(242,178,52,.18)}
+  .pseg.on{background:var(--gold);box-shadow:inset -2px 0 0 var(--navy-deep),0 0 10px rgba(242,178,52,.75)}
+  .playhead{
+    position:absolute;left:50%;top:0;bottom:0;width:2px;margin-left:-1px;
+    background:var(--paper);border-radius:2px;pointer-events:none;
+    box-shadow:0 0 9px rgba(251,247,238,.85);
+  }
+  .playhead::before{
+    content:"";position:absolute;left:-4px;top:0;
+    border-left:5px solid transparent;border-right:5px solid transparent;
+    border-top:7px solid var(--paper);
+  }
   .crow{display:flex;align-items:center;justify-content:center;gap:10px}
   .tempo{display:inline-flex;align-items:center;gap:4px;padding:4px;
     background:rgba(251,247,238,.08);border:1px solid rgba(251,247,238,.16);border-radius:999px}
@@ -226,5 +241,6 @@
     .nav{padding:13px 16px;font-size:15px}
   }
   @media (prefers-reduced-motion: reduce){ .note,.nav,.switch::after,.pseg{transition:none} }
+  @media print{ .timeline{display:none} }
 </style>
 </head>

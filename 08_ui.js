@@ -117,53 +117,71 @@ function go(i, instant) {
   centerCard(cards[state.cur], instant);
 }
 
-/* Framdriftslinje: én bit per tone, bredden følger notelengden, så man ser
-   hvor lang tonen er før man kommer dit. Biten fylles i takt med tonen. */
-let pSegs = [];
+/* Tidslinje: én bit per tone der bredden er proporsjonal med varigheten.
+   Banen glir mot venstre mens sangen spilles, og spillehodet står stille i midten. */
+const TL_PPB = 30;                 // piksler per taktslag
+let pSegs = [], tlStart = [], tlTotal = 0;
 function renderProgress() {
-  const p = $('progress');
-  p.innerHTML = '';
-  const total = state.events.reduce((a, e) => a + e.beats, 0) || 1;
+  const lane = $('tlane');
+  lane.innerHTML = '';
+  tlStart = []; tlTotal = 0;
   pSegs = state.events.map((e, i) => {
     const b = document.createElement('div');
     b.className = 'pseg' + (e.rest ? ' rest' : '');
-    b.style.flexBasis = (100 * e.beats / total).toFixed(4) + '%';
+    b.style.width = (e.beats * TL_PPB).toFixed(2) + 'px';
     if (e.bar && state.showBars) b.classList.add('barstart');
     else if (e.phrase) b.classList.add('phrasestart');
     const w = e.rest ? T('ui.rest') : dispNote(writtenOf(e));
     b.title = `${i + 1}. ${w} · ${(+e.beats.toFixed(3))}`;
     b.addEventListener('click', () => { stopIfPlaying(); go(i); });
-    b.innerHTML = '<i></i>';
-    p.appendChild(b);
+    tlStart.push(tlTotal);
+    tlTotal += e.beats;
+    lane.appendChild(b);
     return b;
   });
+  syncTimeline(true);
+}
+/* Hvor banen må stå for at et gitt punkt i sangen skal ligge under spillehodet */
+function tlOffset(beatPos) {
+  const t = $('timeline');
+  return (t.clientWidth / 2) - beatPos * TL_PPB;
+}
+function laneStyle(transition, x) {
+  const lane = $('tlane');
+  lane.style.transition = transition;
+  lane.style.transform = 'translateX(' + x.toFixed(1) + 'px)';
+}
+/* Setter banen til tonen man står på. Kalles når man blar, ikke under avspilling. */
+function syncTimeline(instant) {
+  if (!pSegs.length) return;
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  laneStyle((instant || reduce) ? 'none' : 'transform .18s ease-out', tlOffset(tlStart[state.cur] || 0));
+}
+/* Sammenhengende gliding fra en tone og ut sangen, med samme forsinkelse som lyden. */
+function glideTimeline(from, leadSecs) {
+  if (!pSegs.length) return;
+  const startBeats = tlStart[from] || 0;
+  const secs = (tlTotal - startBeats) * 60 / state.bpm;
+  laneStyle('none', tlOffset(startBeats));
+  void $('tlane').offsetWidth;                 // tvinger omtegning før ny animasjon
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  laneStyle(`transform ${secs.toFixed(3)}s linear ${Math.max(0, leadSecs || 0).toFixed(3)}s`, tlOffset(tlTotal));
+}
+/* Fryser banen der den er akkurat nå */
+function freezeTimeline() {
+  const lane = $('tlane');
+  const m = getComputedStyle(lane).transform;
+  lane.style.transition = 'none';
+  if (m && m !== 'none') lane.style.transform = m;
 }
 function paintProgress() {
-  if (!pSegs.length) return;
-  const cur = state.cur;
-  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   pSegs.forEach((b, j) => {
-    if (j === cur) return;
-    b.classList.toggle('done', j < cur);
-    b.classList.remove('on');
-    const f = b.firstChild;
-    f.style.transition = 'none';
-    f.style.width = j < cur ? '100%' : '0';
+    b.classList.toggle('done', j < state.cur);
+    b.classList.toggle('on', j === state.cur);
   });
-  const b = pSegs[cur];
-  if (!b) return;
-  b.classList.remove('done');
-  b.classList.add('on');
-  const f = b.firstChild;
-  f.style.transition = 'none';
-  f.style.width = '0';
-  void f.offsetWidth;                       // tvinger omtegning før ny animasjon
-  if (player.playing && !reduce) {
-    const secs = state.events[cur].beats * 60 / state.bpm;
-    f.style.transition = 'width ' + secs.toFixed(3) + 's linear';
-  }
-  f.style.width = '100%';
+  if (!player.playing) syncTimeline(false);
 }
+
 function instrName(id) { return T('instruments.' + id) || id; }
 function updateHeader() {
   const ins = curInstr();

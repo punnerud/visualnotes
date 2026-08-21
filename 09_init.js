@@ -173,7 +173,7 @@ function syncUrl() {
 }
 
 /* ---------------- Avspilling ---------------- */
-function stopIfPlaying() { if (player.playing) { stopPlayback(); updatePlayBtn(); } }
+function stopIfPlaying() { if (player.playing) { stopPlayback(); freezeTimeline(); updatePlayBtn(); } }
 function updatePlayBtn() {
   const b = $('playBtn');
   b.textContent = player.playing ? '⏸' : '▶';
@@ -184,7 +184,7 @@ function beginPlayback(from, countIn) {
   if (!state.events.length) return false;
   const ins = curInstr();
   player.onNote = i => { go(i); flash(i); };
-  player.onStop = () => { updatePlayBtn(); };
+  player.onStop = () => { updatePlayBtn(); freezeTimeline(); };
   const sounding = state.events.map(e => Object.assign({}, e, { midi: e.rest ? null : soundingMidi(e) }));
   const ok = startPlayback(sounding, {
     bpm: state.bpm, ts: state.ts, upbeat: state.upbeat, from: from || 0,
@@ -193,10 +193,11 @@ function beginPlayback(from, countIn) {
     transpose: 0, group: ins.group,
   });
   updatePlayBtn();
+  if (ok) glideTimeline(from || 0, AC ? player.t0 - AC.currentTime : 0);
   return ok;
 }
 function playPause() {
-  if (player.playing) { stopPlayback(); updatePlayBtn(); return; }
+  if (player.playing) { stopPlayback(); freezeTimeline(); updatePlayBtn(); return; }
   go(0, true);                       // ▶ spiller alltid sangen fra begynnelsen
   beginPlayback(0);
 }
@@ -285,7 +286,10 @@ function init() {
     else if (e.key === 'ArrowLeft') { e.preventDefault(); stopIfPlaying(); go(state.cur - 1); }
     else if (e.key === ' ') { e.preventDefault(); playPause(); }
   });
-  window.addEventListener('resize', () => centerCard(cards[state.cur], true));
+  window.addEventListener('resize', () => {
+    centerCard(cards[state.cur], true);
+    if (!player.playing) syncTimeline(true);
+  });
   setupStripDrag($('strip'));
 
   rebuildAll();
