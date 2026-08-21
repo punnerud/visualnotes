@@ -1,0 +1,70 @@
+<body>
+<header class="topbar">
+  <div class="tb-text">
+    <div class="tb-title" id="tbTitle">♪</div>
+    <div class="tb-meta" id="tbMeta"></div>
+  </div>
+  <button class="iconbtn" id="openSongs" title="Sanger">♫</button>
+  <button class="iconbtn" id="openShare" title="Del">🔗</button>
+  <button class="iconbtn" id="openSettings" title="Innstillinger">⚙</button>
+</header>
+
+<main>
+  <div class="strip" id="strip" aria-label="Toner med grep"></div>
+  <div class="info">
+    <div class="legend" id="legend"></div>
+    <p class="hint" id="hint"></p>
+    <p class="warn" id="warn" hidden></p>
+  </div>
+</main>
+
+<div class="controls">
+  <button class="nav" id="prev">◀</button>
+  <div class="counter"><b id="pos">1</b><span id="ofTotal">av 1</span></div>
+  <button class="nav" id="playBtn">▶</button>
+  <button class="nav" id="next">▶</button>
+</div>
+
+<!-- Innstillinger -->
+<div class="sheet" id="settings" hidden>
+  <div class="sheet-inner">
+    <div class="sheet-head"><h2 id="setTitle">Innstillinger</h2><button class="iconbtn" data-close="settings">✕</button></div>
+    <div id="setBody"></div>
+  </div>
+</div>
+
+<!-- Sanger -->
+<div class="sheet" id="songs" hidden>
+  <div class="sheet-inner">
+    <div class="sheet-head"><h2 id="songsTitle">Sanger</h2><button class="iconbtn" data-close="songs">✕</button></div>
+    <div class="songlist" id="songList"></div>
+    <p class="hint" id="songsNote"></p>
+  </div>
+</div>
+
+<!-- Del / rediger -->
+<div class="sheet" id="share" hidden>
+  <div class="sheet-inner">
+    <div class="sheet-head"><h2 id="shareTitle">Del</h2><button class="iconbtn" data-close="share">✕</button></div>
+    <div id="shareBody"></div>
+  </div>
+</div>
+
+<!-- Utskrift -->
+<div class="printview" id="printview" hidden>
+  <div class="ptools">
+    <button class="ptool pgold" id="doPrint">🖨</button>
+    <div class="pgroup"><span id="perLineLbl">Per linje</span>
+      <button class="pstep" id="rowM">−</button><b id="rowVal">11</b><button class="pstep" id="rowP">+</button></div>
+    <div class="pgroup"><span>Zoom</span>
+      <button class="pstep" id="zM">−</button><b id="zVal">60%</b><button class="pstep" id="zP">+</button></div>
+    <button class="ptool" id="orient">A4</button>
+    <button class="ptool" id="pclose">✕</button>
+  </div>
+  <div class="psheet" id="psheet">
+    <h2 class="ptitle" id="ptitle">♪</h2>
+    <p class="psub" id="psub"></p>
+    <div class="pgrid" id="pgrid"></div>
+    <p class="plegend" id="plegend"></p>
+  </div>
+</div>

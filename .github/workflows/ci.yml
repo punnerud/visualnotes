@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sjekk språkfilene
+        run: python3 validate_i18n.py
+
+      - name: Bygg index.html på nytt
+        run: python3 build.py
+
+      - name: Kjør testene
+        run: |
+          node test_url.js
+          node test_fingering.js
+          node test_songs.js
+
+      - name: index.html må være i synk med kildene
+        run: |
+          if ! git diff --exit-code -- index.html; then
+            echo "::error::index.html er ikke bygget fra gjeldende kilder. Kjør 'python3 build.py' og commit resultatet."
+            exit 1
+          fi

@@ -1,0 +1,2107 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>visualnotes · noter og grep</title>
+<meta name="description" content="Spill sanger tone for tone med ekte grep. Sangen ligger i URL-en, så en LLM kan lage den. Norsk, svensk, dansk og engelsk.">
+<meta name="color-scheme" content="dark light">
+<style id="pageStyle">@page{size:A4 portrait;margin:10mm}</style>
+<style>
+  :root{
+    --navy:#22304f; --navy-deep:#19233d; --paper:#fbf7ee; --ink:#1c1712;
+    --gold:#f2b234; --line:#e7dfcd; --muted:#9a8f79; --sky:#c9d3ea;
+    --card-w:86px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    min-height:100dvh;display:flex;flex-direction:column;
+    background:linear-gradient(180deg,var(--navy) 0%,var(--navy-deep) 100%);
+    color:var(--paper);
+    font-family:ui-rounded,"SF Pro Rounded","Nunito","Trebuchet MS",system-ui,-apple-system,sans-serif;
+    overflow-x:hidden;
+  }
+  main{flex:1;display:flex;flex-direction:column;min-height:0}
+  button{font:inherit;border:0;cursor:pointer;border-radius:999px;font-weight:800;color:inherit}
+
+  /* ---------- Topplinje ---------- */
+  .topbar{
+    display:flex;align-items:center;gap:10px;
+    padding:calc(10px + env(safe-area-inset-top)) 14px 8px;
+  }
+  .tb-text{flex:1;min-width:0}
+  .tb-title{font-size:16px;font-weight:800;letter-spacing:.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tb-meta{font-size:11.5px;font-weight:600;color:var(--sky);opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .iconbtn{
+    width:40px;height:40px;flex:0 0 auto;display:grid;place-items:center;font-size:19px;
+    background:rgba(251,247,238,.1);border:1px solid rgba(251,247,238,.2);
+  }
+  .iconbtn:hover{background:rgba(251,247,238,.18)}
+
+  /* ---------- Tonerekka ---------- */
+  .strip{
+    display:flex;align-items:stretch;gap:8px;width:100%;
+    overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;
+    padding:14px calc(50vw - 60px) 12px;
+    scrollbar-width:thin;
+  }
+  .strip::-webkit-scrollbar{height:8px}
+  .strip::-webkit-scrollbar-thumb{background:rgba(251,247,238,.25);border-radius:4px}
+
+  .note{
+    flex:0 0 auto;width:var(--w,86px);
+    background:var(--paper);color:var(--ink);
+    border:2px solid var(--line);border-radius:18px;
+    padding:10px 4px 6px;
+    display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:6px;
+    cursor:pointer;
+    transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease;
+  }
+  .note .fingwrap{height:clamp(92px,21vh,164px);width:100%;display:flex;align-items:center;justify-content:center}
+  .note .fingwrap svg{height:100%;width:auto;max-width:100%}
+  .note .fingwrap svg.fing-keys,.note .fingwrap svg.fing-slide{height:auto;width:100%}
+  .note.nofing .fingwrap{height:auto}
+  .note .name{font-size:24px;font-weight:800;line-height:1;letter-spacing:-.02em}
+  .note .name small{font-size:13px;opacity:.55;font-weight:700}
+  .note .staffwrap{width:100%;display:flex;justify-content:center}
+  .note .staffwrap svg{width:100%;height:auto;max-width:150px}
+  .note .lyric{font-size:12px;font-weight:700;color:#6b6250;min-height:14px}
+  .note .fingtxt{font-size:11px;font-weight:800;color:#6b6250;letter-spacing:.06em}
+  .note.rest .name{color:var(--muted)}
+  .note.out{opacity:.45}
+  .note.current{border-color:var(--gold);box-shadow:0 0 0 3px var(--gold),0 12px 24px rgba(0,0,0,.4);transform:translateY(-6px)}
+  .note.beat{box-shadow:0 0 0 3px var(--gold),0 0 26px rgba(242,178,52,.6)}
+  .gap{margin-left:18px}
+  .gap2{margin-left:34px}
+  .barline{flex:0 0 auto;width:3px;align-self:stretch;margin:16px 3px;background:rgba(251,247,238,.35);border-radius:2px}
+
+  /* ---------- Info ---------- */
+  .info{padding:6px 16px 10px;text-align:center}
+  .legend{display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:8px}
+  .pill{
+    display:inline-flex;align-items:center;gap:7px;
+    background:var(--paper);color:var(--ink);border-radius:999px;padding:7px 13px;
+    font-size:13px;font-weight:700;border:0;
+  }
+  .pill.ghost{background:transparent;color:var(--paper);border:2px solid rgba(251,247,238,.35)}
+  .dot{width:15px;height:15px;border-radius:50%;border:2.5px solid var(--ink);background:#fff}
+  .dot.on{background:var(--ink)}
+  .dot.half{background:linear-gradient(180deg,#fff 50%,var(--ink) 50%)}
+  .hint{margin-top:9px;font-size:12px;font-weight:600;color:#8fa0c4}
+  .warn{margin-top:8px;font-size:12px;font-weight:700;color:#ffc9c9}
+
+  /* ---------- Bunnlinje ---------- */
+  .controls{
+    position:sticky;bottom:0;display:flex;align-items:center;justify-content:center;gap:10px;
+    padding:12px 14px calc(12px + env(safe-area-inset-bottom));
+    background:var(--navy-deep);border-top:1px solid rgba(251,247,238,.12);
+    box-shadow:0 -8px 20px rgba(0,0,0,.3);
+  }
+  .nav{padding:14px 22px;font-size:16px;transition:transform .1s ease}
+  .nav:active{transform:scale(.95)}
+  .nav:focus-visible,.iconbtn:focus-visible,.pill:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+  #next,#prev{background:transparent;color:var(--paper);border:2px solid rgba(251,247,238,.45)}
+  #playBtn{background:var(--gold);color:var(--ink);padding:14px 26px;font-size:18px;box-shadow:0 3px 0 rgba(0,0,0,.35)}
+  #playBtn.on{background:#ff9f76}
+  .nav:disabled{opacity:.3;pointer-events:none}
+  .counter{min-width:62px;text-align:center;font-weight:700;font-size:12px;color:var(--sky);font-variant-numeric:tabular-nums}
+  .counter b{display:block;font-size:22px;color:var(--gold);line-height:1.1}
+
+  /* ---------- Panel ---------- */
+  .sheet{position:fixed;inset:0;z-index:40;display:flex;align-items:flex-end;justify-content:center;background:rgba(10,14,26,.62)}
+  .sheet[hidden]{display:none}
+  .sheet-inner{
+    width:min(640px,100%);max-height:86vh;overflow:auto;
+    background:var(--navy-deep);border-radius:22px 22px 0 0;
+    border:1px solid rgba(251,247,238,.16);border-bottom:0;
+    padding:16px 16px calc(20px + env(safe-area-inset-bottom));
+  }
+  .sheet-head{display:flex;align-items:center;gap:10px;margin-bottom:12px;position:sticky;top:-16px;background:var(--navy-deep);padding-top:4px;z-index:1}
+  .sheet-head h2{flex:1;font-size:17px;font-weight:800}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid rgba(251,247,238,.1)}
+  .row:last-child{border-bottom:0}
+  .row label{font-size:14px;font-weight:700}
+  .row .sub{display:block;font-size:11.5px;font-weight:600;color:var(--sky);opacity:.8;margin-top:2px}
+  .seg{display:flex;flex-wrap:wrap;gap:6px}
+  .seg button{
+    padding:8px 12px;font-size:13px;background:rgba(251,247,238,.09);
+    border:1px solid rgba(251,247,238,.18);border-radius:12px;
+  }
+  .seg button.on{background:var(--gold);color:var(--ink);border-color:var(--gold)}
+  select,input[type=text],textarea{
+    font:inherit;font-size:14px;font-weight:600;
+    background:rgba(251,247,238,.1);color:var(--paper);
+    border:1px solid rgba(251,247,238,.22);border-radius:12px;padding:9px 10px;max-width:100%;
+  }
+  select option{background:var(--navy-deep);color:var(--paper)}
+  textarea{width:100%;min-height:90px;resize:vertical;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px}
+  input[type=range]{width:150px;accent-color:var(--gold)}
+  .switch{width:52px;height:30px;border-radius:999px;background:rgba(251,247,238,.18);position:relative;flex:0 0 auto;border:0}
+  .switch::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:var(--paper);transition:transform .16s ease}
+  .switch.on{background:var(--gold)}
+  .switch.on::after{transform:translateX(22px)}
+  .songlist{display:flex;flex-direction:column;gap:6px}
+  .songitem{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;
+    background:rgba(251,247,238,.08);border:1px solid rgba(251,247,238,.14);border-radius:14px;padding:11px 13px;width:100%}
+  .songitem.on{border-color:var(--gold)}
+  .songitem b{font-size:14.5px;font-weight:800}
+  .songitem span{font-size:11.5px;font-weight:600;color:var(--sky);opacity:.8}
+  .urlbox{width:100%;word-break:break-all;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+    font-size:12px;background:rgba(0,0,0,.28);border-radius:12px;padding:10px;line-height:1.5;color:#dfe6f5}
+  .btnrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .btnrow button{padding:10px 15px;font-size:13.5px;background:rgba(251,247,238,.12);border:1px solid rgba(251,247,238,.22)}
+  .btnrow button.gold{background:var(--gold);color:var(--ink);border-color:var(--gold)}
+  code.k{background:rgba(0,0,0,.3);border-radius:6px;padding:1px 5px;font-size:12px}
+
+  /* ---------- Utskrift ---------- */
+  .printview{position:fixed;inset:0;z-index:50;background:#e8ebf2;overflow:auto}
+  .printview[hidden]{display:none}
+  .ptools{position:sticky;top:0;z-index:2;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:9px;
+    background:var(--navy-deep);padding:12px 14px;box-shadow:0 4px 14px rgba(0,0,0,.25)}
+  .pgroup{display:inline-flex;align-items:center;gap:8px;background:rgba(251,247,238,.1);border-radius:999px;
+    padding:5px 8px 5px 12px;color:var(--sky);font-size:13px;font-weight:700}
+  .pgroup b{min-width:66px;text-align:center;color:var(--paper);font-size:14px;font-variant-numeric:tabular-nums}
+  .pstep{width:34px;height:34px;border-radius:50%;background:var(--paper);color:var(--ink);font-size:18px;line-height:1}
+  .ptool{padding:10px 15px;background:transparent;color:var(--paper);border:2px solid rgba(251,247,238,.45);font-size:13.5px}
+  .pgold{background:var(--gold);color:var(--ink);border:0;box-shadow:0 3px 0 rgba(0,0,0,.35)}
+  .psheet{background:#fff;color:var(--ink);width:200mm;margin:18px auto 50px;padding:10mm;border-radius:6px;
+    box-shadow:0 10px 30px rgba(0,0,0,.3);print-color-adjust:exact;-webkit-print-color-adjust:exact}
+  .psheet.land{width:287mm}
+  .ptitle{font-size:20px;font-weight:800;margin-bottom:2px}
+  .psub{font-size:12px;font-weight:600;color:#6b6250;margin-bottom:12px}
+  .pgrid{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch}
+  .pgrid .note{cursor:default;box-shadow:none}
+  .pgrid .barline{background:#c9bfa6}
+  .pgrid .pbreak{flex-basis:100%;height:0}
+  .plegend{margin-top:14px;font-size:11.5px;font-weight:600;color:#6b6250;line-height:1.6}
+
+  @media print{
+    body{background:#fff;display:block}
+    main,.controls,.topbar,.sheet{display:none !important}
+    .printview{position:static;background:#fff;overflow:visible}
+    .ptools{display:none}
+    .psheet{width:auto !important;margin:0;padding:0;box-shadow:none;border-radius:0}
+    .note{border-color:#d8d0bd !important}
+  }
+  @media (max-width:520px){
+    .strip{padding-left:calc(50vw - 54px);padding-right:calc(50vw - 54px)}
+    .nav{padding:13px 16px;font-size:15px}
+  }
+  @media (prefers-reduced-motion: reduce){ .note,.nav,.switch::after{transition:none} }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="tb-text">
+    <div class="tb-title" id="tbTitle">♪</div>
+    <div class="tb-meta" id="tbMeta"></div>
+  </div>
+  <button class="iconbtn" id="openSongs" title="Sanger">♫</button>
+  <button class="iconbtn" id="openShare" title="Del">🔗</button>
+  <button class="iconbtn" id="openSettings" title="Innstillinger">⚙</button>
+</header>
+
+<main>
+  <div class="strip" id="strip" aria-label="Toner med grep"></div>
+  <div class="info">
+    <div class="legend" id="legend"></div>
+    <p class="hint" id="hint"></p>
+    <p class="warn" id="warn" hidden></p>
+  </div>
+</main>
+
+<div class="controls">
+  <button class="nav" id="prev">◀</button>
+  <div class="counter"><b id="pos">1</b><span id="ofTotal">av 1</span></div>
+  <button class="nav" id="playBtn">▶</button>
+  <button class="nav" id="next">▶</button>
+</div>
+
+<!-- Innstillinger -->
+<div class="sheet" id="settings" hidden>
+  <div class="sheet-inner">
+    <div class="sheet-head"><h2 id="setTitle">Innstillinger</h2><button class="iconbtn" data-close="settings">✕</button></div>
+    <div id="setBody"></div>
+  </div>
+</div>
+
+<!-- Sanger -->
+<div class="sheet" id="songs" hidden>
+  <div class="sheet-inner">
+    <div class="sheet-head"><h2 id="songsTitle">Sanger</h2><button class="iconbtn" data-close="songs">✕</button></div>
+    <div class="songlist" id="songList"></div>
+    <p class="hint" id="songsNote"></p>
+  </div>
+</div>
+
+<!-- Del / rediger -->
+<div class="sheet" id="share" hidden>
+  <div class="sheet-inner">
+    <div class="sheet-head"><h2 id="shareTitle">Del</h2><button class="iconbtn" data-close="share">✕</button></div>
+    <div id="shareBody"></div>
+  </div>
+</div>
+
+<!-- Utskrift -->
+<div class="printview" id="printview" hidden>
+  <div class="ptools">
+    <button class="ptool pgold" id="doPrint">🖨</button>
+    <div class="pgroup"><span id="perLineLbl">Per linje</span>
+      <button class="pstep" id="rowM">−</button><b id="rowVal">11</b><button class="pstep" id="rowP">+</button></div>
+    <div class="pgroup"><span>Zoom</span>
+      <button class="pstep" id="zM">−</button><b id="zVal">60%</b><button class="pstep" id="zP">+</button></div>
+    <button class="ptool" id="orient">A4</button>
+    <button class="ptool" id="pclose">✕</button>
+  </div>
+  <div class="psheet" id="psheet">
+    <h2 class="ptitle" id="ptitle">♪</h2>
+    <p class="psub" id="psub"></p>
+    <div class="pgrid" id="pgrid"></div>
+    <p class="plegend" id="plegend"></p>
+  </div>
+</div>
+<script>
+'use strict';
+/* ================================================================
+   Kjerne: tonemodell, transponering, instrumenter
+   Deler av denne fila er hentet fra punnerud/notecircle (samme forfatter).
+   ================================================================ */
+
+const LETTERS = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+const LETTER_SEMIS = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+const LETTER_FIFTHS = { C: 0, D: 2, E: 4, F: -1, G: 1, A: 3, B: 5 };
+
+function noteMidi(n) { return 12 * (n.oct + 1) + LETTER_SEMIS[n.letter] + n.alt; }
+function diaIndex(n) { return n.oct * 7 + LETTERS.indexOf(n.letter); }
+function fifthsOf(t) { return LETTER_FIFTHS[t.letter] + 7 * t.alt; }
+function tonicFromFifths(f) {
+  const idx = (((f + 1) % 7) + 7) % 7;
+  return { letter: 'FCGDAEB'[idx], alt: Math.floor((f + 1) / 7) };
+}
+// Respell om stavemåten havner utenfor de 15 standardsignaturene (unngår dobbeltkryss).
+function normalizeSpelling(out) {
+  const sig = fifthsOf(out);
+  if (sig > 7) return tonicFromFifths(sig - 12);
+  if (sig < -7) return tonicFromFifths(sig + 12);
+  return out;
+}
+
+/* Transponer en stavemåte (letter/alt/oct) med (letters, semis).
+   skrevet = klingende + (letters, semis) — samme konvensjon som notecircle. */
+function transposeBy(n, letters, semis) {
+  if (!letters && !semis) return { letter: n.letter, alt: n.alt, oct: n.oct };
+  const i = LETTERS.indexOf(n.letter);
+  const li = i + letters;
+  const nl = LETTERS[((li % 7) + 7) % 7];
+  const octShift = Math.floor(li / 7);
+  const base = LETTER_SEMIS[n.letter] + n.alt;
+  const naturalRel = LETTER_SEMIS[nl] + 12 * octShift;
+  const sp = normalizeSpelling({ letter: nl, alt: base + semis - naturalRel });
+  // Oktav settes fra faktisk midi, slik at respelling ikke flytter tonen
+  const target = noteMidi(n) + semis;
+  let oct = n.oct + octShift;
+  const guess = () => 12 * (oct + 1) + LETTER_SEMIS[sp.letter] + sp.alt;
+  while (guess() - target >= 12) oct--;
+  while (target - guess() >= 12) oct++;
+  return { letter: sp.letter, alt: sp.alt, oct };
+}
+
+/* Enkel stavemåte fra midi (brukes når URL-en oppgir ventiltall e.l.) */
+const SHARP_SPELL = [['C',0],['C',1],['D',0],['E',-1],['E',0],['F',0],['F',1],['G',0],['A',-1],['A',0],['B',-1],['B',0]];
+function spellMidi(m) {
+  const pc = ((m % 12) + 12) % 12;
+  const [letter, alt] = SHARP_SPELL[pc];
+  const oct = Math.floor(m / 12) - 1 - (letter === 'B' && alt === 0 && pc === 11 ? 0 : 0);
+  const n = { letter, alt, oct };
+  // juster oktav slik at midi stemmer (Cb/B# forekommer ikke i tabellen over)
+  n.oct += Math.round((m - noteMidi(n)) / 12);
+  return n;
+}
+
+/* ---------------- Nøkler (clefs) ----------------
+   bottomDi = diatonisk indeks for nederste notelinje. */
+const CLEFS = {
+  treble: { bottomDi: 30, centerMidi: 71 }, // E4 nederst
+  alto:   { bottomDi: 24, centerMidi: 60 }, // F3 nederst
+  bass:   { bottomDi: 18, centerMidi: 50 }, // G2 nederst
+};
+
+/* ---------------- Grep for 3-ventils messing (skrevet tonehøyde) ----------------
+   Hentet uendret fra notecircle. f = hovedgrep, a = alternativer, i = intonasjonsmerknad. */
+const FINGERINGS = {
+  54: { f: '123', i: 'i123' },
+  55: { f: '13',  i: 'i13' },
+  56: { f: '23' },
+  57: { f: '12', a: ['3'] },
+  58: { f: '1' },
+  59: { f: '2' },
+  60: { f: '0' },
+  61: { f: '123', i: 'i123' },
+  62: { f: '13',  i: 'i13' },
+  63: { f: '23' },
+  64: { f: '12', a: ['3'] },
+  65: { f: '1' },
+  66: { f: '2' },
+  67: { f: '0' },
+  68: { f: '23' },
+  69: { f: '12', a: ['3'] },
+  70: { f: '1' },
+  71: { f: '2' },
+  72: { f: '0' },
+  73: { f: '12', a: ['3', '123'] },
+  74: { f: '1',  a: ['13'] },
+  75: { f: '2',  a: ['23'] },
+  76: { f: '0',  a: ['12'], i: 'i5th' },
+  77: { f: '1' },
+  78: { f: '2' },
+  79: { f: '0',  a: ['13'] },
+  80: { f: '23' },
+  81: { f: '12', a: ['3'] },
+  82: { f: '1' },
+  83: { f: '2' },
+  84: { f: '0' },
+  85: { f: '12', i: 'ihigh12' },
+  86: { f: '1',  i: 'ihigh' },
+  87: { f: '2',  i: 'ihigh' },
+  88: { f: '0',  i: 'ihigh' },
+  89: { f: '1',  i: 'ihigh' },
+  90: { f: '2',  i: 'ihigh' },
+  91: { f: '0',  i: 'ihigh' },
+};
+
+/* ---------------- Instrumenter ----------------
+   skrevet = klingende + (letters, semis). lo/hi = skrevet register i midi.
+   fing = id på grepstabell i 03_fingering.js (null = kun noter).
+   Tabellen er hentet fra notecircle og utvidet med blokkfløyte. */
+const INSTRUMENTS = [
+  { id: 'violin',      family: 'violinF',    group: 'strings',  clef: 'treble', letters: 0,   semis: 0,   fing: 'str_violin', lo: 55, hi: 91 },
+  { id: 'viola',       family: 'violaF',     group: 'strings',  clef: 'alto',   letters: 0,   semis: 0,   fing: 'str_viola',  lo: 48, hi: 81 },
+  { id: 'cello',       family: 'celloF',     group: 'strings',  clef: 'bass',   letters: 0,   semis: 0,   fing: 'str_cello',  lo: 36, hi: 67 },
+  { id: 'dbass',       family: 'dbassF',     group: 'strings',  clef: 'bass',   letters: 7,   semis: 12,  fing: 'str_bass',   lo: 40, hi: 67 },
+  { id: 'blokkfloyte_c', family: 'recorder', group: 'woodwind', clef: 'treble', letters: -7,  semis: -12, fing: 'rec_c',      lo: 60, hi: 86 },
+  { id: 'blokkfloyte_f', family: 'recorder', group: 'woodwind', clef: 'treble', letters: 0,   semis: 0,   fing: 'rec_f',      lo: 65, hi: 91 },
+  { id: 'piccolo',     family: 'flute',      group: 'woodwind', clef: 'treble', letters: -7,  semis: -12, fing: 'flute',      lo: 62, hi: 93 },
+  { id: 'flute',       family: 'flute',      group: 'woodwind', clef: 'treble', letters: 0,   semis: 0,   fing: 'flute',      lo: 60, hi: 93 },
+  { id: 'altflute',    family: 'flute',      group: 'woodwind', clef: 'treble', letters: 3,   semis: 5,   fing: 'flute',      lo: 60, hi: 89 },
+  { id: 'oboe',        family: 'oboe',       group: 'woodwind', clef: 'treble', letters: 0,   semis: 0,   fing: null,         lo: 58, hi: 86 },
+  { id: 'englhorn',    family: 'oboe',       group: 'woodwind', clef: 'treble', letters: 4,   semis: 7,   fing: null,         lo: 59, hi: 86 },
+  { id: 'klar_bb',     family: 'clarinet',   group: 'woodwind', clef: 'treble', letters: 1,   semis: 2,   fing: 'clarinet',   lo: 52, hi: 91 },
+  { id: 'klar_a',      family: 'clarinet',   group: 'woodwind', clef: 'treble', letters: 2,   semis: 3,   fing: 'clarinet',   lo: 52, hi: 91 },
+  { id: 'klar_eb',     family: 'clarinet',   group: 'woodwind', clef: 'treble', letters: -2,  semis: -3,  fing: 'clarinet',   lo: 52, hi: 88 },
+  { id: 'bassklar',    family: 'clarinet',   group: 'woodwind', clef: 'treble', letters: 8,   semis: 14,  fing: 'clarinet',   lo: 51, hi: 84 },
+  { id: 'fagott',      family: 'bassoon',    group: 'woodwind', clef: 'bass',   letters: 0,   semis: 0,   fing: null,         lo: 34, hi: 64 },
+  { id: 'kontrafag',   family: 'bassoon',    group: 'woodwind', clef: 'bass',   letters: 7,   semis: 12,  fing: null,         lo: 34, hi: 60 },
+  { id: 'sopransax',   family: 'sax',        group: 'woodwind', clef: 'treble', letters: 1,   semis: 2,   fing: 'sax',        lo: 58, hi: 88 },
+  { id: 'altsax',      family: 'sax',        group: 'woodwind', clef: 'treble', letters: 5,   semis: 9,   fing: 'sax',        lo: 58, hi: 88 },
+  { id: 'tenorsax',    family: 'sax',        group: 'woodwind', clef: 'treble', letters: 8,   semis: 14,  fing: 'sax',        lo: 58, hi: 88 },
+  { id: 'barisax',     family: 'sax',        group: 'woodwind', clef: 'treble', letters: 12,  semis: 21,  fing: 'sax',        lo: 57, hi: 88 },
+  { id: 'tromp_bb',    family: 'trumpet',    group: 'brass',    clef: 'treble', letters: 1,   semis: 2,   fing: 'brass3',     lo: 54, hi: 91 },
+  { id: 'tromp_c',     family: 'trumpet',    group: 'brass',    clef: 'treble', letters: 0,   semis: 0,   fing: 'brass3',     lo: 54, hi: 91 },
+  { id: 'tromp_d',     family: 'trumpet',    group: 'brass',    clef: 'treble', letters: -1,  semis: -2,  fing: 'brass3',     lo: 54, hi: 89 },
+  { id: 'tromp_eb',    family: 'trumpet',    group: 'brass',    clef: 'treble', letters: -2,  semis: -3,  fing: 'brass3',     lo: 54, hi: 89 },
+  { id: 'picctromp',   family: 'trumpet',    group: 'brass',    clef: 'treble', letters: -6,  semis: -10, fing: 'brass4',     lo: 54, hi: 86 },
+  { id: 'kornett_bb',  family: 'trumpet',    group: 'brass',    clef: 'treble', letters: 1,   semis: 2,   fing: 'brass3',     lo: 54, hi: 89 },
+  { id: 'kornett_eb',  family: 'trumpet',    group: 'brass',    clef: 'treble', letters: -2,  semis: -3,  fing: 'brass3',     lo: 54, hi: 88 },
+  { id: 'flygelhorn',  family: 'trumpet',    group: 'brass',    clef: 'treble', letters: 1,   semis: 2,   fing: 'brass3',     lo: 54, hi: 86 },
+  { id: 'basstromp',   family: 'trumpet',    group: 'brass',    clef: 'treble', letters: 8,   semis: 14,  fing: 'brass3',     lo: 54, hi: 84 },
+  { id: 'horn_f',      family: 'horn',       group: 'brass',    clef: 'treble', letters: 4,   semis: 7,   fing: 'horn_f',     lo: 46, hi: 81 },
+  { id: 'althorn',     family: 'horn',       group: 'brass',    clef: 'treble', letters: 5,   semis: 9,   fing: 'brass3',     lo: 54, hi: 84 },
+  { id: 'trombone',    family: 'trombone',   group: 'brass',    clef: 'bass',   letters: 0,   semis: 0,   fing: 'slide',      lo: 40, hi: 70 },
+  { id: 'basstrombone',family: 'trombone',   group: 'brass',    clef: 'bass',   letters: 0,   semis: 0,   fing: 'slide',      lo: 34, hi: 67 },
+  { id: 'eufonium_c',  family: 'euphonium',  group: 'brass',    clef: 'bass',   letters: 0,   semis: 0,   fing: 'brass3', fsemis: 14, lo: 34, hi: 70 },
+  { id: 'eufonium_bb', family: 'euphonium',  group: 'brass',    clef: 'treble', letters: 8,   semis: 14,  fing: 'brass3',     lo: 54, hi: 84 },
+  { id: 'tuba',        family: 'tuba',       group: 'brass',    clef: 'bass',   letters: 0,   semis: 0,   fing: 'brass3', fsemis: 26, lo: 28, hi: 58 },
+  { id: 'tuba_eb',     family: 'tuba',       group: 'brass',    clef: 'treble', letters: 12,  semis: 21,  fing: 'brass3',     lo: 54, hi: 82 },
+  { id: 'tuba_bb',     family: 'tuba',       group: 'brass',    clef: 'treble', letters: 15,  semis: 26,  fing: 'brass3',     lo: 54, hi: 80 },
+  { id: 'piano',       family: 'pianoF',     group: 'other',    clef: 'treble', letters: 0,   semis: 0,   fing: 'keys',       lo: 36, hi: 96 },
+  { id: 'klokkespill', family: 'percussion', group: 'other',    clef: 'treble', letters: -14, semis: -24, fing: 'keys',       lo: 55, hi: 84 },
+  { id: 'xylofon',     family: 'percussion', group: 'other',    clef: 'treble', letters: -7,  semis: -12, fing: 'keys',       lo: 60, hi: 89 },
+  { id: 'sang',        family: 'voiceF',     group: 'other',    clef: 'treble', letters: 0,   semis: 0,   fing: null,         lo: 48, hi: 84 },
+];
+const INSTR_BY_ID = {};
+INSTRUMENTS.forEach(x => { INSTR_BY_ID[x.id] = x; });
+const INSTR_GROUP_ORDER = ['brass', 'woodwind', 'strings', 'other'];
+
+const FAMILIES = [
+  { id: 'trumpet',    group: 'brass',    std: 'tromp_bb' },
+  { id: 'horn',       group: 'brass',    std: 'horn_f' },
+  { id: 'trombone',   group: 'brass',    std: 'trombone' },
+  { id: 'euphonium',  group: 'brass',    std: 'eufonium_bb' },
+  { id: 'tuba',       group: 'brass',    std: 'tuba_bb' },
+  { id: 'recorder',   group: 'woodwind', std: 'blokkfloyte_c' },
+  { id: 'flute',      group: 'woodwind', std: 'flute' },
+  { id: 'oboe',       group: 'woodwind', std: 'oboe' },
+  { id: 'clarinet',   group: 'woodwind', std: 'klar_bb' },
+  { id: 'bassoon',    group: 'woodwind', std: 'fagott' },
+  { id: 'sax',        group: 'woodwind', std: 'altsax' },
+  { id: 'violinF',    group: 'strings',  std: 'violin' },
+  { id: 'violaF',     group: 'strings',  std: 'viola' },
+  { id: 'celloF',     group: 'strings',  std: 'cello' },
+  { id: 'dbassF',     group: 'strings',  std: 'dbass' },
+  { id: 'pianoF',     group: 'other',    std: 'piano' },
+  { id: 'percussion', group: 'other',    std: 'klokkespill' },
+  { id: 'voiceF',     group: 'other',    std: 'sang' },
+];
+const FAMILY_BY_ID = {};
+FAMILIES.forEach(f => {
+  f.members = [f.std].concat(INSTRUMENTS.filter(x => x.family === f.id && x.id !== f.std).map(x => x.id));
+  FAMILY_BY_ID[f.id] = f;
+});
+
+/* Klingende -> skrevet for valgt instrument */
+function toWritten(n, ins) { return transposeBy(n, ins.letters, ins.semis); }
+/* Skrevet -> klingende */
+function toConcert(n, ins) { return transposeBy(n, -ins.letters, -ins.semis); }
+
+/* ================================================================
+   Språk og notenavn
+   Basert på punnerud/notecircle (samme forfatter).
+   ================================================================ */
+const I18N = {"no":{"clefs":{"alto":"C-nøkkel","bass":"F-nøkkel","treble":"G-nøkkel"},"families":{"bassoon":"Fagott","celloF":"Cello","clarinet":"Klarinett","dbassF":"Kontrabass","euphonium":"Eufonium","flute":"Fløyte","horn":"Valthorn","oboe":"Obo","percussion":"Slagverk","pianoF":"Piano","recorder":"Blokkfløyte","sax":"Saksofon","trombone":"Trombone","trumpet":"Trompet","tuba":"Tuba","violaF":"Bratsj","violinF":"Fiolin","voiceF":"Sang"},"instrumentGroups":{"brass":"Messing","other":"Tangent og slagverk","strings":"Strykere","woodwind":"Treblås"},"instruments":{"altflute":"Altfløyte i G","althorn":"Althorn i E♭","altsax":"Altsaksofon i E♭","barisax":"Barytonsaksofon i E♭","bassklar":"Bassklarinett i B♭","basstrombone":"Basstrombone","basstromp":"Basstrompet i B♭","blokkfloyte_c":"Blokkfløyte i C (sopran)","blokkfloyte_f":"Blokkfløyte i F (alt)","cello":"Cello","dbass":"Kontrabass","englhorn":"Engelsk horn i F","eufonium_bb":"Eufonium/baryton i B♭ (G-nøkkel)","eufonium_c":"Eufonium (bassnøkkel)","fagott":"Fagott","flute":"Fløyte","flygelhorn":"Flygelhorn i B♭","horn_f":"Valthorn i F","klar_a":"Klarinett i A","klar_bb":"Klarinett i B♭","klar_eb":"Klarinett i E♭","klokkespill":"Klokkespill","kontrafag":"Kontrafagott","kornett_bb":"Kornett i B♭","kornett_eb":"Sopran­kornett i E♭","oboe":"Obo","pauker":"Pauker","piano":"Piano","piccolo":"Pikkolofløyte","picctromp":"Piccolotrompet i B♭","sang":"Sang","sopransax":"Sopransaksofon i B♭","tenorsax":"Tenorsaksofon i B♭","trombone":"Trombone","tromp_bb":"Trompet i B♭","tromp_c":"Trompet i C","tromp_d":"Trompet i D","tromp_eb":"Trompet i E♭","tuba":"Tuba (bassnøkkel)","tuba_bb":"Tuba i B♭ (G-nøkkel, brassband)","tuba_eb":"Tuba i E♭ (G-nøkkel, brassband)","viola":"Bratsj","violin":"Fiolin","xylofon":"Xylofon"},"meta":{"lang":"no","name":"Norsk"},"songs":{"src":{"beethoven":"Beethoven 1824 · fri bruk","exercise":"Øvelse","pierpont":"J. Pierpont 1857 · fri bruk","trad":"Folketone · fri bruk"}},"ui":{"about":"<a href=\"https://github.com/punnerud/visualnotes\" target=\"_blank\" rel=\"noopener\">Kildekode på GitHub</a> · MIT-lisens","air":"Luft mellom notene","all":"Alle","apply":"Bruk","autoAdvance":"Automatisk bytte","autoAdvanceSub":"Starter avspilling når siden åpnes","baroque":"Barokk","concertPitch":"Klingende","copied":"Kopiert ✓","copyFail":"Kunne ikke kopiere","copyLink":"Kopier lenke","countIn":"Tell inn (4 slag)","covered":"Dekket hull","editNotes":"Toner","editNotesSub":"Bokstaver eller solfège. Eksempel: C4 D E F G:2 | A*4","formatHelp":"Hjelp til formatet","formatHelpText":"Ett ord per tone: <code class=\"k\">C4</code> <code class=\"k\">F#4</code> <code class=\"k\">Bb3</code> <code class=\"k\">Ciss</code> <code class=\"k\">do re mi</code>. <code class=\"k\">H</code> og <code class=\"k\">B</code> betyr begge h/B♮ — B♭ skrives <code class=\"k\">Bb</code> eller <code class=\"k\">Hess</code>.<br>Uten oktavtall velges tonen nærmest den forrige.<br>Lengde: <code class=\"k\">C:2</code> = to slag, <code class=\"k\">C:.5</code> = åttedel, eller <code class=\"k\">:w :h :q :e :s</code> med punktum for punktert (<code class=\"k\">:q.</code>).<br>Pause: <code class=\"k\">-</code> · Gjenta: <code class=\"k\">A*4</code> · Frase: <code class=\"k\">|</code> · Linjeskift ved utskrift: <code class=\"k\">||</code> · Bindebue: <code class=\"k\">C~ C</code>","german":"Tysk","halfHole":"Halvt hull","hint":"Trykk på en tone for å hoppe dit · piltaster blar, mellomrom spiller av","instrument":"Instrument","intlNames":"Internasjonale","keyboard":"Merket tangent","landscape":"Liggende ark","language":"Språk","metronome":"Metronom","nativeNames":"Nasjonale","noFingering":"ingen grepdata","noteNames":"Notenavn","ofTotal":"av {n}","open":"Åpen","openHole":"Åpent hull","outOfRange":"{n} toner ligger utenfor registeret til {instr}","parseErrors":"Forsto ikke: {list}","pause":"Pause","perLine":"Per linje","pitchView":"Tonehøyde","play":"Spill av","portrait":"Stående ark","pressed":"Trykk ned","print":"Skriv ut","printLegend":"Svart = trykk ned / dekket hull · hvit = åpen · halvfylt = halvt hull. Ventiler: 1 nederst (nærmest deg), 3 øverst.","recorderSystem":"Grepsystem","rest":"Pause","semitones":"halvtoner","settings":"Innstillinger","share":"Del og rediger","showBars":"Vis taktstreker","showFing":"Vis grep","showOct":"Vis oktavtall","slidePos":"Tallet er posisjonen på draget","songTitle":"Tittel","songs":"Sanger","songsNote":"Alle melodiene er folketoner eller fri bruk. Sangtekst er ikke lagt inn — bruk &w= for egne stavelser.","stringPos":"Streng og finger i 1. posisjon","tempo":"Tempo","timeSig":"Taktart","toneSound":"Spill tone","transpose":"Transponer","untitled":"Uten tittel","writtenPitch":"Skrevet"}},"sv":{"clefs":{"alto":"C-klav","bass":"F-klav","treble":"G-klav"},"families":{"bassoon":"Fagott","celloF":"Cello","clarinet":"Klarinett","dbassF":"Kontrabas","euphonium":"Eufonium","flute":"Flöjt","horn":"Valthorn","oboe":"Oboe","percussion":"Slagverk","pianoF":"Piano","recorder":"Blockflöjt","sax":"Saxofon","trombone":"Trombon","trumpet":"Trumpet","tuba":"Tuba","violaF":"Viola","violinF":"Violin","voiceF":"Sång"},"instrumentGroups":{"brass":"Bleckblås","other":"Tangentinstrument och slagverk","strings":"Stråkar","woodwind":"Träblås"},"instruments":{"altflute":"Altflöjt i G","althorn":"Althorn i E♭","altsax":"Altsaxofon i E♭","barisax":"Barytonsaxofon i E♭","bassklar":"Basklarinett i B♭","basstrombone":"Bastrombon","basstromp":"Bastrumpet i B♭","blokkfloyte_c":"Blockflöjt i C (sopran)","blokkfloyte_f":"Blockflöjt i F (alt)","cello":"Cello","dbass":"Kontrabas","englhorn":"Engelskt horn i F","eufonium_bb":"Eufonium/baryton i B♭ (G-klav)","eufonium_c":"Eufonium (basklav)","fagott":"Fagott","flute":"Flöjt","flygelhorn":"Flygelhorn i B♭","horn_f":"Valthorn i F","klar_a":"Klarinett i A","klar_bb":"Klarinett i B♭","klar_eb":"Klarinett i E♭","klokkespill":"Klockspel","kontrafag":"Kontrafagott","kornett_bb":"Kornett i B♭","kornett_eb":"Soprankornett i E♭","oboe":"Oboe","pauker":"Pukor","piano":"Piano","piccolo":"Piccolaflöjt","picctromp":"Piccolatrumpet i B♭","sang":"Sång","sopransax":"Sopransaxofon i B♭","tenorsax":"Tenorsaxofon i B♭","trombone":"Trombon","tromp_bb":"Trumpet i B♭","tromp_c":"Trumpet i C","tromp_d":"Trumpet i D","tromp_eb":"Trumpet i E♭","tuba":"Tuba (basklav)","tuba_bb":"Tuba i B♭ (G-klav, brassband)","tuba_eb":"Tuba i E♭ (G-klav, brassband)","viola":"Viola","violin":"Violin","xylofon":"Xylofon"},"meta":{"lang":"sv","name":"Svenska"},"songs":{"src":{"beethoven":"Beethoven 1824 · fri användning","exercise":"Övning","pierpont":"J. Pierpont 1857 · fri användning","trad":"Folkmelodi · fri användning"}},"ui":{"about":"<a href=\"https://github.com/punnerud/visualnotes\" target=\"_blank\" rel=\"noopener\">Källkod på GitHub</a> · MIT-licens","air":"Luft mellan noterna","all":"Alla","apply":"Använd","autoAdvance":"Automatiskt byte","autoAdvanceSub":"Startar uppspelning när sidan öppnas","baroque":"Barock","concertPitch":"Klingande","copied":"Kopierad ✓","copyFail":"Kunde inte kopiera","copyLink":"Kopiera länk","countIn":"Räkna in (4 slag)","covered":"Täckt hål","editNotes":"Toner","editNotesSub":"Bokstäver eller solfège. Exempel: C4 D E F G:2 | A*4","formatHelp":"Hjälp med formatet","formatHelpText":"Ett ord per ton: <code class=\"k\">C4</code> <code class=\"k\">F#4</code> <code class=\"k\">Bb3</code> <code class=\"k\">Ciss</code> <code class=\"k\">do re mi</code>. <code class=\"k\">H</code> och <code class=\"k\">B</code> betyder båda h/B♮ — B♭ skrivs <code class=\"k\">Bb</code> eller <code class=\"k\">Hess</code>.<br>Utan oktavsiffra väljs tonen närmast den föregående.<br>Längd: <code class=\"k\">C:2</code> = två slag, <code class=\"k\">C:.5</code> = åttondel, eller <code class=\"k\">:w :h :q :e :s</code> med punkt för punkterad (<code class=\"k\">:q.</code>).<br>Paus: <code class=\"k\">-</code> · Upprepa: <code class=\"k\">A*4</code> · Fras: <code class=\"k\">|</code> · Radbrytning vid utskrift: <code class=\"k\">||</code> · Båge: <code class=\"k\">C~ C</code>","german":"Tyskt","halfHole":"Halvt hål","hint":"Tryck på en ton för att hoppa dit · piltangenter bläddrar, mellanslag spelar","instrument":"Instrument","intlNames":"Internationella","keyboard":"Markerad tangent","landscape":"Liggande ark","language":"Språk","metronome":"Metronom","nativeNames":"Nationella","noFingering":"inga greppdata","noteNames":"Notnamn","ofTotal":"av {n}","open":"Öppen","openHole":"Öppet hål","outOfRange":"{n} toner ligger utanför registret för {instr}","parseErrors":"Förstod inte: {list}","pause":"Pausa","perLine":"Per rad","pitchView":"Tonhöjd","play":"Spela upp","portrait":"Stående ark","pressed":"Tryck ner","print":"Skriv ut","printLegend":"Svart = nedtryckt / täckt hål · vit = öppen · halvfylld = halvt hål. Ventiler: 1 nederst (närmast dig), 3 överst.","recorderSystem":"Greppsystem","rest":"Paus","semitones":"halvtoner","settings":"Inställningar","share":"Dela och redigera","showBars":"Visa taktstreck","showFing":"Visa grepp","showOct":"Visa oktavsiffra","slidePos":"Siffran är dragets läge","songTitle":"Titel","songs":"Sånger","songsNote":"Alla melodier är folkmelodier eller fria. Sångtext ingår inte — använd &w= för egna stavelser.","stringPos":"Sträng och finger i första läget","tempo":"Tempo","timeSig":"Taktart","toneSound":"Spela ton","transpose":"Transponera","untitled":"Utan titel","writtenPitch":"Skrivet"}},"da":{"clefs":{"alto":"C-nøgle","bass":"F-nøgle","treble":"G-nøgle"},"families":{"bassoon":"Fagot","celloF":"Cello","clarinet":"Klarinet","dbassF":"Kontrabas","euphonium":"Euphonium","flute":"Fløjte","horn":"Valdhorn","oboe":"Obo","percussion":"Slagtøj","pianoF":"Klaver","recorder":"Blokfløjte","sax":"Saxofon","trombone":"Trombone","trumpet":"Trompet","tuba":"Tuba","violaF":"Bratsch","violinF":"Violin","voiceF":"Sang"},"instrumentGroups":{"brass":"Messingblæsere","other":"Tangenter og slagtøj","strings":"Strygere","woodwind":"Træblæsere"},"instruments":{"altflute":"Altfløjte i G","althorn":"Althorn i E♭","altsax":"Altsaxofon i E♭","barisax":"Barytonsaxofon i E♭","bassklar":"Basklarinet i B♭","basstrombone":"Basbasun","basstromp":"Bastrompet i B♭","blokkfloyte_c":"Blokfløjte i C (sopran)","blokkfloyte_f":"Blokfløjte i F (alt)","cello":"Cello","dbass":"Kontrabas","englhorn":"Engelskhorn i F","eufonium_bb":"Euphonium/baryton i B♭ (G-nøgle)","eufonium_c":"Euphonium (basnøgle)","fagott":"Fagot","flute":"Fløjte","flygelhorn":"Flygelhorn i B♭","horn_f":"Valdhorn i F","klar_a":"Klarinet i A","klar_bb":"Klarinet i B♭","klar_eb":"Klarinet i E♭","klokkespill":"Klokkespil","kontrafag":"Kontrafagot","kornett_bb":"Kornet i B♭","kornett_eb":"Soprankornet i E♭","oboe":"Obo","pauker":"Pauker","piano":"Klaver","piccolo":"Piccolofløjte","picctromp":"Piccolotrompet i B♭","sang":"Sang","sopransax":"Sopransaxofon i B♭","tenorsax":"Tenorsaxofon i B♭","trombone":"Basun","tromp_bb":"Trompet i B♭","tromp_c":"Trompet i C","tromp_d":"Trompet i D","tromp_eb":"Trompet i E♭","tuba":"Tuba (basnøgle)","tuba_bb":"Tuba i B♭ (G-nøgle, brassband)","tuba_eb":"Tuba i E♭ (G-nøgle, brassband)","viola":"Bratsch","violin":"Violin","xylofon":"Xylofon"},"meta":{"lang":"da","name":"Dansk"},"songs":{"src":{"beethoven":"Beethoven 1824 · fri brug","exercise":"Øvelse","pierpont":"J. Pierpont 1857 · fri brug","trad":"Folkemelodi · fri brug"}},"ui":{"about":"<a href=\"https://github.com/punnerud/visualnotes\" target=\"_blank\" rel=\"noopener\">Kildekode på GitHub</a> · MIT-licens","air":"Luft mellem noderne","all":"Alle","apply":"Anvend","autoAdvance":"Automatisk skift","autoAdvanceSub":"Starter afspilning når siden åbnes","baroque":"Barok","concertPitch":"Klingende","copied":"Kopieret ✓","copyFail":"Kunne ikke kopiere","copyLink":"Kopiér link","countIn":"Tæl ind (4 slag)","covered":"Dækket hul","editNotes":"Toner","editNotesSub":"Bogstaver eller solfège. Eksempel: C4 D E F G:2 | A*4","formatHelp":"Hjælp til formatet","formatHelpText":"Ét ord per tone: <code class=\"k\">C4</code> <code class=\"k\">F#4</code> <code class=\"k\">Bb3</code> <code class=\"k\">Cis</code> <code class=\"k\">do re mi</code>. <code class=\"k\">H</code> og <code class=\"k\">B</code> betyder begge h/B♮ — B♭ skrives <code class=\"k\">Bb</code> eller <code class=\"k\">Hes</code>.<br>Uden oktavtal vælges tonen nærmest den forrige.<br>Længde: <code class=\"k\">C:2</code> = to slag, <code class=\"k\">C:.5</code> = ottendedel, eller <code class=\"k\">:w :h :q :e :s</code> med punktum for punkteret (<code class=\"k\">:q.</code>).<br>Pause: <code class=\"k\">-</code> · Gentag: <code class=\"k\">A*4</code> · Frase: <code class=\"k\">|</code> · Linjeskift ved udskrift: <code class=\"k\">||</code> · Bindebue: <code class=\"k\">C~ C</code>","german":"Tysk","halfHole":"Halvt hul","hint":"Tryk på en tone for at springe dertil · piletaster blader, mellemrum afspiller","instrument":"Instrument","intlNames":"Internationale","keyboard":"Markeret tangent","landscape":"Liggende ark","language":"Sprog","metronome":"Metronom","nativeNames":"Nationale","noFingering":"ingen grebdata","noteNames":"Nodenavne","ofTotal":"af {n}","open":"Åben","openHole":"Åbent hul","outOfRange":"{n} toner ligger uden for registret på {instr}","parseErrors":"Forstod ikke: {list}","pause":"Pause","perLine":"Per linje","pitchView":"Tonehøjde","play":"Afspil","portrait":"Stående ark","pressed":"Tryk ned","print":"Udskriv","printLegend":"Sort = trykket ned / dækket hul · hvid = åben · halvt fyldt = halvt hul. Ventiler: 1 nederst (nærmest dig), 3 øverst.","recorderSystem":"Grebsystem","rest":"Pause","semitones":"halvtoner","settings":"Indstillinger","share":"Del og rediger","showBars":"Vis taktstreger","showFing":"Vis greb","showOct":"Vis oktavtal","slidePos":"Tallet er positionen på trækket","songTitle":"Titel","songs":"Sange","songsNote":"Alle melodier er folkemelodier eller fri brug. Sangtekst er ikke med — brug &w= til egne stavelser.","stringPos":"Streng og finger i 1. position","tempo":"Tempo","timeSig":"Taktart","toneSound":"Spil tone","transpose":"Transponér","untitled":"Uden titel","writtenPitch":"Skrevet"}},"en":{"clefs":{"alto":"Alto clef","bass":"Bass clef","treble":"Treble clef"},"families":{"bassoon":"Bassoon","celloF":"Cello","clarinet":"Clarinet","dbassF":"Double bass","euphonium":"Euphonium","flute":"Flute","horn":"French horn","oboe":"Oboe","percussion":"Percussion","pianoF":"Piano","recorder":"Recorder","sax":"Saxophone","trombone":"Trombone","trumpet":"Trumpet","tuba":"Tuba","violaF":"Viola","violinF":"Violin","voiceF":"Voice"},"instrumentGroups":{"brass":"Brass","other":"Keyboard and percussion","strings":"Strings","woodwind":"Woodwinds"},"instruments":{"altflute":"Alto flute in G","althorn":"Tenor horn in E♭","altsax":"Alto saxophone in E♭","barisax":"Baritone saxophone in E♭","bassklar":"Bass clarinet in B♭","basstrombone":"Bass trombone","basstromp":"Bass trumpet in B♭","blokkfloyte_c":"Descant recorder in C","blokkfloyte_f":"Treble recorder in F","cello":"Cello","dbass":"Double bass","englhorn":"English horn in F","eufonium_bb":"Euphonium/baritone in B♭ (treble clef)","eufonium_c":"Euphonium (bass clef)","fagott":"Bassoon","flute":"Flute","flygelhorn":"Flugelhorn in B♭","horn_f":"French horn in F","klar_a":"Clarinet in A","klar_bb":"Clarinet in B♭","klar_eb":"Clarinet in E♭","klokkespill":"Glockenspiel","kontrafag":"Contrabassoon","kornett_bb":"Cornet in B♭","kornett_eb":"Soprano cornet in E♭","oboe":"Oboe","pauker":"Timpani","piano":"Piano","piccolo":"Piccolo","picctromp":"Piccolo trumpet in B♭","sang":"Voice","sopransax":"Soprano saxophone in B♭","tenorsax":"Tenor saxophone in B♭","trombone":"Trombone","tromp_bb":"Trumpet in B♭","tromp_c":"Trumpet in C","tromp_d":"Trumpet in D","tromp_eb":"Trumpet in E♭","tuba":"Tuba (bass clef)","tuba_bb":"Tuba in B♭ (treble clef, brass band)","tuba_eb":"Tuba in E♭ (treble clef, brass band)","viola":"Viola","violin":"Violin","xylofon":"Xylophone"},"meta":{"lang":"en","name":"English"},"songs":{"src":{"beethoven":"Beethoven 1824 · public domain","exercise":"Exercise","pierpont":"J. Pierpont 1857 · public domain","trad":"Traditional · public domain"}},"ui":{"about":"<a href=\"https://github.com/punnerud/visualnotes\" target=\"_blank\" rel=\"noopener\">Source on GitHub</a> · MIT licence","air":"Space between notes","all":"All","apply":"Apply","autoAdvance":"Auto-advance","autoAdvanceSub":"Starts playback when the page opens","baroque":"Baroque","concertPitch":"Concert","copied":"Copied ✓","copyFail":"Could not copy","copyLink":"Copy link","countIn":"Count in (4 beats)","covered":"Covered hole","editNotes":"Notes","editNotesSub":"Letters or solfège. Example: C4 D E F G:2 | A*4","formatHelp":"Format help","formatHelpText":"One word per note: <code class=\"k\">C4</code> <code class=\"k\">F#4</code> <code class=\"k\">Bb3</code> <code class=\"k\">Cis</code> <code class=\"k\">do re mi</code>. Both <code class=\"k\">H</code> and <code class=\"k\">B</code> mean B♮ — write B♭ as <code class=\"k\">Bb</code> or <code class=\"k\">Hes</code>.<br>Without an octave digit the note nearest the previous one is chosen.<br>Length: <code class=\"k\">C:2</code> = two beats, <code class=\"k\">C:.5</code> = eighth, or <code class=\"k\">:w :h :q :e :s</code> with a dot for dotted (<code class=\"k\">:q.</code>).<br>Rest: <code class=\"k\">-</code> · Repeat: <code class=\"k\">A*4</code> · Phrase: <code class=\"k\">|</code> · Line break when printing: <code class=\"k\">||</code> · Tie: <code class=\"k\">C~ C</code>","german":"German","halfHole":"Half hole","hint":"Tap a note to jump there · arrow keys browse, space plays","instrument":"Instrument","intlNames":"International","keyboard":"Highlighted key","landscape":"Landscape","language":"Language","metronome":"Metronome","nativeNames":"Traditional","noFingering":"no chart","noteNames":"Note names","ofTotal":"of {n}","open":"Open","openHole":"Open hole","outOfRange":"{n} notes are outside the range of the {instr}","parseErrors":"Could not read: {list}","pause":"Pause","perLine":"Per line","pitchView":"Pitch","play":"Play","portrait":"Portrait","pressed":"Pressed","print":"Print","printLegend":"Black = pressed / covered · white = open · half filled = half hole. Valves: 1 at the bottom (nearest you), 3 at the top.","recorderSystem":"Fingering system","rest":"Rest","semitones":"semitones","settings":"Settings","share":"Share and edit","showBars":"Show bar lines","showFing":"Show fingering","showOct":"Show octave number","slidePos":"The number is the slide position","songTitle":"Title","songs":"Songs","songsNote":"Every melody is traditional or public domain. Lyrics are not included — use &w= for your own syllables.","stringPos":"String and finger, first position","tempo":"Tempo","timeSig":"Time signature","toneSound":"Play the note","transpose":"Transpose","untitled":"Untitled","writtenPitch":"Written"}}};
+const LANG_ORDER = ['no', 'sv', 'da', 'en'];
+// gss = norsk/svensk (H, Ess, Aiss ...), gs = dansk/tysk (H, Es, As), letters = engelsk
+const NOTE_SYSTEMS = { no: 'gss', sv: 'gss', da: 'gs', en: 'letters' };
+
+function T(path, tokens) {
+  const dig = (lang) => path.split('.').reduce((o, k) => (o == null ? o : o[k]), I18N[lang]);
+  let v = dig(state.lang);
+  if (v == null) v = dig('no');
+  if (v == null) return path;
+  if (typeof v === 'string' && tokens) v = fmt(v, tokens);
+  return v;
+}
+function fmt(s, tokens) {
+  return s.replace(/\{(\w+)\}/g, (m, k) => (tokens && k in tokens) ? tokens[k] : m);
+}
+function accSymbol(alt) {
+  if (alt === 0) return '';
+  if (alt > 0) return '♯'.repeat(alt);
+  return '♭'.repeat(-alt);
+}
+function intlName(letter, alt) { return letter + accSymbol(alt); }
+
+// Notenavn i språkets egen tradisjon
+function nativeName(letter, alt, sys) {
+  if (sys === 'letters') return intlName(letter, alt);
+  if (sys === 'gss') { // norsk/svensk: dobbeltkonsonant (Ess, Ass)
+    if (letter === 'B') {
+      if (alt === 0) return 'H';
+      if (alt === 1) return 'Hiss';
+      if (alt === -1) return 'B';
+      return alt > 0 ? 'H' + 'iss'.repeat(alt) : 'Hess' + 'ess'.repeat(-alt - 1);
+    }
+    if (alt > 0) return letter + 'iss'.repeat(alt);
+    if (alt === 0) return letter;
+    const single = { C: 'Cess', D: 'Dess', E: 'Ess', F: 'Fess', G: 'Gess', A: 'Ass' }[letter];
+    return alt === -1 ? single : single + 'ess'.repeat(-alt - 1);
+  }
+  // gs = dansk/tysk: enkeltkonsonant (Es, As)
+  if (letter === 'B') {
+    if (alt === 0) return 'H';
+    if (alt === 1) return 'His';
+    if (alt === -1) return 'B';
+    return alt > 0 ? 'H' + 'is'.repeat(alt) : 'Hes' + 'es'.repeat(-alt - 1);
+  }
+  if (alt > 0) return letter + 'is'.repeat(alt);
+  if (alt === 0) return letter;
+  const single = { C: 'Ces', D: 'Des', E: 'Es', F: 'Fes', G: 'Ges', A: 'As' }[letter];
+  return alt === -1 ? single : single + 'es'.repeat(-alt - 1);
+}
+function dispNote(n, namingOverride) {
+  const naming = namingOverride || (typeof state !== 'undefined' ? state.naming : 'native');
+  if (naming === 'intl') return intlName(n.letter, n.alt);
+  return nativeName(n.letter, n.alt, NOTE_SYSTEMS[state.lang] || 'letters');
+}
+function langFromNavigator(nav) {
+  const raw = (nav || '').toLowerCase();
+  if (raw.startsWith('nb') || raw.startsWith('nn') || raw.startsWith('no')) return 'no';
+  if (raw.startsWith('sv')) return 'sv';
+  if (raw.startsWith('da')) return 'da';
+  if (raw.startsWith('en')) return 'en';
+  return null;
+}
+
+/* ================================================================
+   Grep: data + generisk SVG-tegning
+   Hver "chart" gir en liste med nedtrykte klaffer/hull for en skrevet tone.
+   Dekning per instrument er dokumentert i README.
+   ================================================================ */
+
+/* ---------- Klaffoppsett (viewBox-koordinater) ---------- */
+function woodwindLayout(opts) {
+  const o = opts || {};
+  const k = [];
+  const push = (id, x, y, r, label, shape) => k.push({ id, x, y, r, label: label || '', shape: shape || 'circle' });
+  if (o.thumb) push('T', 11, 22, 7.5, o.thumbLabel || '');
+  if (o.reg) push('R', 11, 44, 6, o.regLabel || '');
+  push('l1', 36, 22, 10.5); push('l2', 36, 48, 10.5); push('l3', 36, 74, 10.5);
+  push('r1', 36, 108, 10.5); push('r2', 36, 134, 10.5); push('r3', 36, 160, 10.5);
+  (o.side || []).forEach((s, i) => push(s.id, 58, 30 + i * 16, 5, s.label));
+  (o.lpinky || []).forEach((s, i) => push(s.id, 12, 92 + i * 15, 5.5, s.label));
+  (o.rpinky || []).forEach((s, i) => push(s.id, 58, 150 + i * 15, 5.5, s.label));
+  (o.palm || []).forEach((s, i) => push(s.id, 12, 132 + i * 15, 5.5, s.label));
+  return { w: 70, h: 182, keys: k };
+}
+
+const FING_LAYOUTS = {
+  brass3: { w: 56, h: 132, keys: [
+    { id: '3', x: 28, y: 22, r: 17, label: '3', shape: 'circle' },
+    { id: '2', x: 28, y: 66, r: 17, label: '2', shape: 'circle' },
+    { id: '1', x: 28, y: 110, r: 17, label: '1', shape: 'circle' },
+  ] },
+  brass4: { w: 56, h: 174, keys: [
+    { id: '4', x: 28, y: 22, r: 17, label: '4', shape: 'circle' },
+    { id: '3', x: 28, y: 64, r: 17, label: '3', shape: 'circle' },
+    { id: '2', x: 28, y: 106, r: 17, label: '2', shape: 'circle' },
+    { id: '1', x: 28, y: 148, r: 17, label: '1', shape: 'circle' },
+  ] },
+  recorder: { w: 46, h: 182, keys: [
+    { id: 'T', x: 11, y: 20, r: 7.5, label: '', shape: 'circle' },
+    { id: '1', x: 30, y: 20, r: 9 }, { id: '2', x: 30, y: 44, r: 9 }, { id: '3', x: 30, y: 68, r: 9 },
+    { id: '4', x: 30, y: 96, r: 9 }, { id: '5', x: 30, y: 120, r: 9 },
+    { id: '6', x: 25, y: 144, r: 6.5 }, { id: '6b', x: 37, y: 144, r: 6.5 },
+    { id: '7', x: 25, y: 166, r: 6.5 }, { id: '7b', x: 37, y: 166, r: 6.5 },
+  ] },
+  sax: woodwindLayout({ thumb: true, thumbLabel: '8',
+    side: [{ id: 'bis', label: 'b' }, { id: 'sBb', label: 'B' }, { id: 'sC', label: 'C' }, { id: 'sE', label: 'E' }],
+    lpinky: [{ id: 'lGs', label: '♯' }, { id: 'lCs', label: 'C' }, { id: 'lB', label: 'B' }, { id: 'lBb', label: '♭' }],
+    rpinky: [{ id: 'rEb', label: '♭' }, { id: 'rC', label: 'C' }] }),
+  flute: woodwindLayout({ thumb: true, thumbLabel: 'T',
+    side: [{ id: 'trBb', label: '♭' }],
+    lpinky: [{ id: 'lGs', label: '♯' }],
+    rpinky: [{ id: 'rEb', label: 'E♭' }, { id: 'rCs', label: 'C♯' }, { id: 'rC', label: 'C' }, { id: 'rB', label: 'B' }] }),
+  clarinet: woodwindLayout({ thumb: true, thumbLabel: 'T', reg: true, regLabel: 'R',
+    side: [{ id: 'sA', label: 'A' }, { id: 'sGs', label: '♯' }, { id: 'sEb', label: '♭' }],
+    lpinky: [{ id: 'pE', label: 'E' }, { id: 'pFs', label: 'F♯' }, { id: 'pGs', label: 'G♯' }, { id: 'pCs', label: 'C♯' }],
+    rpinky: [{ id: 'pF', label: 'F' }] }),
+};
+
+/* ---------- Ventilgrep (messing) ---------- */
+// Ventilkombinasjon -> hvor mange halvtoner den senker
+const VALVE_DROP = { '0': 0, '2': 1, '1': 2, '12': 3, '23': 4, '13': 5, '123': 6 };
+const DROP_VALVE = ['0', '2', '1', '12', '23', '13', '123'];
+
+// Overtoner som faktisk brukes (partial-nummer), 7/11/13/14 utelatt (for falske)
+const USABLE_PARTIALS = [2, 3, 4, 5, 6, 8, 9, 10, 12, 16];
+function partialMidis(rootMidi) {
+  return USABLE_PARTIALS.map(n => rootMidi + Math.round(12 * Math.log2(n)));
+}
+// Generisk messinggrep: minste senking som treffer en brukbar overtone
+function harmonicFingering(midi, rootMidi, maxDrop) {
+  const parts = partialMidis(rootMidi);
+  const hits = [];
+  for (let d = 0; d <= (maxDrop === undefined ? 6 : maxDrop); d++) {
+    if (parts.indexOf(midi + d) >= 0) hits.push(d);
+  }
+  if (!hits.length) return null;
+  return { drop: hits[0], alts: hits.slice(1) };
+}
+
+/* ---------- Blokkfløyte (barokk-/engelskgrep som standard) ----------
+   Grunnskjema etter Dolmetsch «Baroque / English Recorder Fingering Chart».
+   Indeksert i halvtoner over instrumentets laveste tone (C for sopran, F for alt).
+   Andre oktav fra 15 og opp: klemgrep (halvt tommelhull) + samme grep som oktaven under. */
+const RECORDER_BAROQUE = {
+  0:  ['T', '1', '2', '3', '4', '5', '6', '6b', '7', '7b'],
+  1:  ['T', '1', '2', '3', '4', '5', '6', '6b', '7'],
+  2:  ['T', '1', '2', '3', '4', '5', '6', '6b'],
+  3:  ['T', '1', '2', '3', '4', '5', '6'],
+  4:  ['T', '1', '2', '3', '4', '5'],
+  5:  ['T', '1', '2', '3', '4', '6', '6b', '7', '7b'],
+  6:  ['T', '1', '2', '3', '5', '6', '6b'],
+  7:  ['T', '1', '2', '3'],
+  8:  ['T', '1', '2', '4', '5', '6'],
+  9:  ['T', '1', '2'],
+  10: ['T', '1', '3', '4'],
+  11: ['T', '1'],
+  12: ['T', '2'],
+  13: ['1', '2'],
+  14: ['2'],
+};
+const RECORDER_GERMAN_DIFF = {
+  5:  ['T', '1', '2', '3', '4'],
+  6:  ['T', '1', '2', '3', '5', '6', '6b', '7', '7b'],
+};
+function recorderFingering(offset, german) {
+  if (offset < 0) return null;
+  const base = (o) => {
+    if (german && RECORDER_GERMAN_DIFF[o]) return RECORDER_GERMAN_DIFF[o].slice();
+    return RECORDER_BAROQUE[o] ? RECORDER_BAROQUE[o].slice() : null;
+  };
+  if (offset <= 14) {
+    const f = base(offset);
+    return f ? { pressed: f, half: [] } : null;
+  }
+  if (offset <= 26) { // klemgrep
+    const f = base(offset - 12);
+    if (!f) return null;
+    const pressed = f.filter(x => x !== 'T');
+    return { pressed: ['T'].concat(pressed), half: ['T'], pinch: true };
+  }
+  return null;
+}
+
+/* ---------- Saksofon (skrevet tonehøyde, B♭3–C♯6) ----------
+   Alle saksofoner har samme skrevne grep. */
+const L123 = ['l1', 'l2', 'l3'], R123 = ['r1', 'r2', 'r3'];
+const SAX_BASE = {
+  58: L123.concat(R123, ['lBb']),           // B♭3
+  59: L123.concat(R123, ['lB']),            // H3
+  60: L123.concat(R123, ['rC']),            // C4
+  61: L123.concat(R123, ['lCs']),           // C♯4
+  62: L123.concat(R123),                    // D4
+  63: L123.concat(R123, ['rEb']),           // E♭4
+  64: L123.concat(['r1', 'r2']),            // E4
+  65: L123.concat(['r1']),                  // F4
+  66: L123.concat(['r2']),                  // F♯4
+  67: L123.slice(),                         // G4
+  68: L123.concat(['lGs']),                 // G♯4
+  69: ['l1', 'l2'],                         // A4
+  70: ['l1', 'bis'],                        // B♭4 (bis)
+  71: ['l1'],                               // H4
+  72: ['l2'],                               // C5
+  73: [],                                   // C♯5 (alt åpent)
+};
+const SAX_ALTS = {
+  66: [L123.concat(['r3'])],
+  70: [['l1', 'l2', 'sBb'], ['l1', 'r1']],
+  72: [['l1', 'sC']],
+};
+
+/* ---------- Tverrfløyte (skrevet C4–C♯6) ---------- */
+const FLUTE_BASE = {
+  60: ['T', 'l1', 'l2', 'l3', 'r1', 'r2', 'r3', 'rC'],          // C4
+  61: ['T', 'l1', 'l2', 'l3', 'r1', 'r2', 'r3', 'rCs'],         // C♯4
+  62: ['T', 'l1', 'l2', 'l3', 'r1', 'r2', 'r3'],                // D4 (pinken av)
+  63: ['T', 'l1', 'l2', 'l3', 'r1', 'r2', 'r3', 'rEb'],         // E♭4
+  64: ['T', 'l1', 'l2', 'l3', 'r1', 'r2', 'rEb'],               // E4
+  65: ['T', 'l1', 'l2', 'l3', 'r1', 'rEb'],                     // F4
+  66: ['T', 'l1', 'l2', 'l3', 'r2', 'rEb'],                     // F♯4
+  67: ['T', 'l1', 'l2', 'l3', 'rEb'],                           // G4
+  68: ['T', 'l1', 'l2', 'l3', 'lGs', 'rEb'],                    // G♯4
+  69: ['T', 'l1', 'l2', 'rEb'],                                 // A4
+  70: ['T', 'l1', 'l2', 'r1', 'rEb'],                           // B♭4
+  71: ['T', 'l1', 'rEb'],                                       // H4
+  72: ['l1', 'rEb'],                                            // C5
+  73: ['rEb'],                                                  // C♯5
+};
+const FLUTE_ALTS = { 70: [['T', 'l1', 'trBb', 'rEb']] };
+
+/* ---------- Klarinett (Boehm, skrevet E3–C6) ----------
+   Grunnskjema fra The Woodwind Fingering Guide (wfg.woodwind.org).
+   Klangregisteret = samme grep + overblåsingsklaff, en duodesim opp. */
+const CLAR_CHAL = {
+  52: ['T', 'l1', 'l2', 'l3', 'r1', 'r2', 'r3', 'pE'],    // E3
+  53: ['T', 'l1', 'l2', 'l3', 'r1', 'r2', 'r3', 'pF'],    // F3
+  54: ['T', 'l1', 'l2', 'l3', 'r1', 'r2', 'r3', 'pFs'],   // F♯3
+  55: ['T', 'l1', 'l2', 'l3', 'r1', 'r2', 'r3'],          // G3
+  56: ['T', 'l1', 'l2', 'l3', 'r1', 'r2', 'r3', 'pGs'],   // G♯3
+  57: ['T', 'l1', 'l2', 'l3', 'r1', 'r2'],                // A3
+  58: ['T', 'l1', 'l2', 'l3', 'r1'],                      // B3 (♭)
+  59: ['T', 'l1', 'l2', 'l3', 'r2'],                      // H3 (gaffelgrep)
+  60: ['T', 'l1', 'l2', 'l3'],                            // C4
+  61: ['T', 'l1', 'l2', 'l3', 'pCs'],                     // C♯4
+  62: ['T', 'l1', 'l2'],                                  // D4
+  63: ['T', 'l1', 'l2', 'sEb'],                           // E♭4 (høyre sideklaff)
+  64: ['T', 'l1'],                                        // E4
+  65: ['T'],                                              // F4
+  66: ['l1'],                                             // F♯4
+  67: [],                                                 // G4 (alt åpent)
+  68: ['sGs'],                                            // G♯4 (halsklaff)
+  69: ['sA'],                                             // A4
+  70: ['R', 'sA'],                                        // B♭4
+};
+
+/* ---------- Strengeinstrumenter, 1. posisjon ---------- */
+const STRING_SETS = {
+  str_violin: { strings: [55, 62, 69, 76], names: ['G', 'D', 'A', 'E'], span: 7 },
+  str_viola:  { strings: [48, 55, 62, 69], names: ['C', 'G', 'D', 'A'], span: 7 },
+  str_cello:  { strings: [36, 43, 50, 57], names: ['C', 'G', 'D', 'A'], span: 5 },
+  str_bass:   { strings: [40, 45, 50, 55], names: ['E', 'A', 'D', 'G'], span: 5 },
+};
+const FINGER_HI = { 0: '0', 1: '1', 2: '1', 3: '2', 4: '2', 5: '3', 6: '3', 7: '4' };  // fiolin/bratsj
+const FINGER_LO = { 0: '0', 1: '1', 2: '1', 3: '2', 4: '3', 5: '4' };                  // cello/bass
+
+/* ---------- Oppslag ---------- */
+function chartIdFor(ins) { return ins.fing; }
+
+// Returnerer null (ingen data) eller et objekt som beskriver grepet
+function fingeringFor(ins, writtenMidi, opts) {
+  const o = opts || {};
+  const id = ins.fing;
+  if (!id) return null;
+
+  if (id === 'brass3' || id === 'brass4') {
+    const m = writtenMidi + (ins.fsemis || 0);
+    const e = FINGERINGS[m];
+    if (!e) return null;
+    return { kind: 'valves', layout: id, pressed: e.f === '0' ? [] : e.f.split(''),
+             label: e.f, alts: (e.a || []), note: e.i || null };
+  }
+  if (id === 'horn_f') {
+    const h = harmonicFingering(writtenMidi, 36); // skrevet C2 som grunntone
+    if (!h) return null;
+    const f = DROP_VALVE[h.drop];
+    return { kind: 'valves', layout: 'brass3', pressed: f === '0' ? [] : f.split(''),
+             label: f, alts: h.alts.map(d => DROP_VALVE[d]), note: null };
+  }
+  if (id === 'slide') {
+    const root = ins.id === 'basstrombone' ? 34 : 34; // B♭1
+    const h = harmonicFingering(writtenMidi, root);
+    if (!h) return null;
+    return { kind: 'slide', pos: h.drop + 1, alts: h.alts.map(d => d + 1) };
+  }
+  if (id === 'keys') return { kind: 'keys', midi: writtenMidi };
+  if (STRING_SETS[id]) {
+    const s = STRING_SETS[id];
+    const map = (id === 'str_cello' || id === 'str_bass') ? FINGER_LO : FINGER_HI;
+    for (let i = s.strings.length - 1; i >= 0; i--) {
+      const off = writtenMidi - s.strings[i];
+      if (off >= 0 && off <= s.span && map[off] !== undefined) {
+        return { kind: 'strings', set: id, string: i, offset: off, finger: map[off] };
+      }
+    }
+    return null;
+  }
+  if (id === 'rec_c' || id === 'rec_f') {
+    const low = id === 'rec_c' ? 60 : 65;
+    const r = recorderFingering(writtenMidi - low, o.german);
+    if (!r) return null;
+    return { kind: 'holes', layout: 'recorder', pressed: r.pressed, half: r.half || [], pinch: !!r.pinch };
+  }
+  if (id === 'sax') {
+    let m = writtenMidi, oct = false;
+    if (m >= 74 && m <= 85) { m -= 12; oct = true; }
+    const f = SAX_BASE[m];
+    if (!f) return null;
+    const pressed = (oct ? ['T'] : []).concat(f);
+    const alts = (SAX_ALTS[m] || []).map(a => (oct ? ['T'] : []).concat(a));
+    return { kind: 'holes', layout: 'sax', pressed, half: [], alts };
+  }
+  if (id === 'flute') {
+    let m = writtenMidi;
+    if (m >= 74 && m <= 85) m -= 12;          // 2. oktav: samme grep
+    const f = FLUTE_BASE[m];
+    if (!f) return null;
+    return { kind: 'holes', layout: 'flute', pressed: f.slice(), half: [],
+             alts: (FLUTE_ALTS[m] || []).map(a => a.slice()) };
+  }
+  if (id === 'clarinet') {
+    const m = writtenMidi;
+    if (m >= 52 && m <= 70) {
+      const f = CLAR_CHAL[m];
+      return f ? { kind: 'holes', layout: 'clarinet', pressed: f.slice(), half: [] } : null;
+    }
+    if (m >= 71 && m <= 85) {                  // klangregister: duodesim opp (19 halvtoner)
+      const f = CLAR_CHAL[m - 19];
+      if (!f) return null;
+      return { kind: 'holes', layout: 'clarinet', pressed: ['R'].concat(f), half: [], over: true };
+    }
+    return null;
+  }
+  return null;
+}
+
+/* ================================================================
+   SVG-tegning av grep
+   ================================================================ */
+const INK = '#1c1712', PAPER = '#fff', DIM = '#bdb29a', HILITE = '#f2b234';
+
+function svgWrap(w, h, body, cls) {
+  return `<svg class="fing ${cls || ''}" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-hidden="true">${body}</svg>`;
+}
+function keyShape(k, mode) {
+  // mode: 'on' | 'off' | 'half'
+  const fill = mode === 'on' ? INK : PAPER;
+  const label = k.label
+    ? `<text x="${k.x}" y="${k.y + k.r * 0.42}" text-anchor="middle" font-size="${Math.max(8, k.r * 1.05)}"
+        font-weight="700" fill="${mode === 'on' ? PAPER : DIM}">${k.label}</text>` : '';
+  let extra = '';
+  if (mode === 'half') {
+    extra = `<path d="M ${k.x - k.r} ${k.y} A ${k.r} ${k.r} 0 0 0 ${k.x + k.r} ${k.y} Z" fill="${INK}"/>`;
+  }
+  return `<circle cx="${k.x}" cy="${k.y}" r="${k.r}" fill="${fill}" stroke="${INK}" stroke-width="2"/>${extra}${label}`;
+}
+function diagramSVG(layoutId, pressed, half) {
+  const L = FING_LAYOUTS[layoutId];
+  if (!L) return '';
+  const on = new Set(pressed || []), hf = new Set(half || []);
+  const body = L.keys.map(k => keyShape(k, hf.has(k.id) ? 'half' : (on.has(k.id) ? 'on' : 'off'))).join('');
+  return svgWrap(L.w, L.h, body, 'fing-' + layoutId);
+}
+function slideSVG(pos) {
+  const w = 132, h = 76, x0 = 11, x1 = 123, y = 34;
+  let s = `<rect x="${x0}" y="${y - 5}" width="${x1 - x0}" height="10" rx="5" fill="none" stroke="${INK}" stroke-width="2"/>`;
+  for (let i = 1; i <= 7; i++) {
+    const x = x0 + (x1 - x0) * (i - 1) / 6;
+    const act = i === pos;
+    s += `<circle cx="${x}" cy="${y}" r="${act ? 11 : 5.5}" fill="${act ? INK : PAPER}" stroke="${INK}" stroke-width="2"/>`;
+    s += `<text x="${x}" y="${act ? y + 4.5 : y + 24}" text-anchor="middle" font-size="${act ? 13 : 10}"
+           font-weight="800" fill="${act ? PAPER : DIM}">${i}</text>`;
+  }
+  return svgWrap(w, h, s, 'fing-slide');
+}
+const BLACK_PC = { 1: 1, 3: 1, 6: 1, 8: 1, 10: 1 };
+function keysSVG(midi) {
+  const start = 12 * Math.floor(midi / 12);      // C i tonens oktav
+  const ww = 15, wh = 96, bw = 9.5, bh = 60, n = 14;
+  const whiteOffsets = [0, 2, 4, 5, 7, 9, 11];
+  let whites = '', blacks = '', idx = 0;
+  for (let o = 0; o < 2; o++) for (let i = 0; i < 7; i++, idx++) {
+    const m = start + o * 12 + whiteOffsets[i];
+    const x = idx * ww;
+    const on = m === midi;
+    whites += `<rect x="${x}" y="0" width="${ww}" height="${wh}" fill="${on ? HILITE : PAPER}" stroke="${INK}" stroke-width="1.6"/>`;
+    const bm = m + 1;
+    if (BLACK_PC[((bm % 12) + 12) % 12] && i !== 2 && i !== 6) {
+      const bx = x + ww - bw / 2;
+      const bon = bm === midi;
+      blacks += `<rect x="${bx}" y="0" width="${bw}" height="${bh}" rx="1.5" fill="${bon ? HILITE : INK}" stroke="${INK}" stroke-width="1.4"/>`;
+    }
+  }
+  const label = `<text x="${ww / 2}" y="${wh - 6}" text-anchor="middle" font-size="9" font-weight="700" fill="${DIM}">C${Math.floor(start / 12) - 1}</text>`;
+  return svgWrap(n * ww, wh + 2, whites + blacks + label, 'fing-keys');
+}
+function stringsSVG(setId, stringIdx, offset, finger) {
+  const s = STRING_SETS[setId];
+  const w = 74, h = 132, top = 34, bot = 124, gap = 16, x0 = 13;
+  let out = `<rect x="${x0 - 7}" y="${top - 8}" width="${gap * 3 + 14}" height="7" fill="${INK}"/>`;
+  for (let i = 0; i < 4; i++) {
+    const x = x0 + i * gap;
+    out += `<line x1="${x}" y1="${top}" x2="${x}" y2="${bot}" stroke="${INK}" stroke-width="${1 + i * 0.5}"/>`;
+    out += `<text x="${x}" y="${top - 22}" text-anchor="middle" font-size="10" font-weight="700" fill="${DIM}">${s.names[i]}</text>`;
+  }
+  const x = x0 + stringIdx * gap;
+  if (offset === 0) {
+    out += `<circle cx="${x}" cy="${top - 15}" r="6.5" fill="${PAPER}" stroke="${INK}" stroke-width="2.4"/>`;
+  } else {
+    const y = top + (bot - top) * (offset / (s.span + 1));
+    out += `<circle cx="${x}" cy="${y}" r="8.5" fill="${INK}"/>`;
+    out += `<text x="${x}" y="${y + 3.5}" text-anchor="middle" font-size="10" font-weight="800" fill="${PAPER}">${finger}</text>`;
+  }
+  return svgWrap(w, h, out, 'fing-strings');
+}
+/* Full grepvisning for én tone. Returnerer {svg, label} eller null. */
+function renderFingering(res) {
+  if (!res) return null;
+  if (res.kind === 'valves') return { svg: diagramSVG(res.layout, res.pressed, []), label: res.label, note: res.note, alts: res.alts };
+  if (res.kind === 'holes')  return { svg: diagramSVG(res.layout, res.pressed, res.half), label: '', alts: res.alts };
+  if (res.kind === 'slide')  return { svg: slideSVG(res.pos), label: String(res.pos), alts: res.alts };
+  if (res.kind === 'keys')   return { svg: keysSVG(res.midi), label: '' };
+  if (res.kind === 'strings') return { svg: stringsSVG(res.set, res.string, res.offset, res.finger), label: res.finger };
+  return null;
+}
+
+/* Sammenhengende register der instrumentet faktisk har grepdata.
+   Brukes til å legge sangen i riktig oktav. */
+const CHART_RANGE_CACHE = {};
+function chartRange(ins) {
+  const key = ins.id + (ins.fing || '-');
+  if (CHART_RANGE_CACHE[key]) return CHART_RANGE_CACHE[key];
+  let lo = null, hi = null;
+  if (ins.fing) {
+    for (let m = ins.lo; m <= ins.hi; m++) {
+      if (fingeringFor(ins, m)) { if (lo === null) lo = m; hi = m; }
+    }
+  }
+  const r = (lo === null) ? { lo: ins.lo, hi: ins.hi } : { lo, hi };
+  CHART_RANGE_CACHE[key] = r;
+  return r;
+}
+
+/* ================================================================
+   Notasjon: notehoder, haler, faner, punkter, pauser, hjelpelinjer
+   ================================================================ */
+const NOTE_VALUES = [
+  { dur: 4,    dot: 0 }, { dur: 4,    dot: 1 },
+  { dur: 2,    dot: 0 }, { dur: 2,    dot: 1 },
+  { dur: 1,    dot: 0 }, { dur: 1,    dot: 1 },
+  { dur: 0.5,  dot: 0 }, { dur: 0.5,  dot: 1 },
+  { dur: 0.25, dot: 0 }, { dur: 0.25, dot: 1 },
+];
+function beatsOf(dur, dot) { return dur * (dot === 2 ? 1.75 : dot === 1 ? 1.5 : 1); }
+// Nærmeste tegnbare noteverdi for et antall taktslag
+function glyphFor(beats) {
+  let best = NOTE_VALUES[4], bd = Infinity;
+  for (const v of NOTE_VALUES) {
+    const d = Math.abs(beatsOf(v.dur, v.dot) - beats);
+    if (d < bd - 1e-9) { bd = d; best = v; }
+  }
+  return { dur: best.dur, dot: best.dot, exact: bd < 1e-9 };
+}
+
+const STAFF = { top: 14, gap: 8, half: 4 };           // linjer: 14,22,30,38,46
+const STAFF_BOTTOM = STAFF.top + STAFF.gap * 4;       // 46
+const STAFF_H = 78;
+
+function accGlyph(alt) {
+  if (alt === 0) return '';
+  if (alt === 1) return '♯'; if (alt === 2) return '𝄪';
+  if (alt === -1) return '♭'; if (alt === -2) return '𝄫';
+  return alt > 0 ? '♯'.repeat(alt) : '♭'.repeat(-alt);
+}
+function headY(n, clefId) {
+  const c = CLEFS[clefId] || CLEFS.treble;
+  return STAFF_BOTTOM - (diaIndex(n) - c.bottomDi) * STAFF.half;
+}
+function ledgerLines(cy, cx, halfW) {
+  let s = '';
+  for (let y = STAFF_BOTTOM + STAFF.gap; y <= cy + 1; y += STAFF.gap)
+    s += `<line x1="${cx - halfW}" x2="${cx + halfW}" y1="${y}" y2="${y}"/>`;
+  for (let y = STAFF.top - STAFF.gap; y >= cy - 1; y -= STAFF.gap)
+    s += `<line x1="${cx - halfW}" x2="${cx + halfW}" y1="${y}" y2="${y}"/>`;
+  return s;
+}
+function restBody(dur, dot, cx) {
+  const mid = STAFF.top + STAFF.gap * 2;   // midtlinje = 30
+  let s = '';
+  if (dur >= 4) s = `<rect x="${cx - 6}" y="${STAFF.top + STAFF.gap - 5}" width="12" height="5" fill="${INK}"/>`;
+  else if (dur >= 2) s = `<rect x="${cx - 6}" y="${mid - 5}" width="12" height="5" fill="${INK}"/>`;
+  else if (dur >= 1) {
+    s = `<path d="M ${cx - 3.5} ${mid - 12} L ${cx + 3} ${mid - 5} L ${cx - 3} ${mid + 2} L ${cx + 3.5} ${mid + 9}"
+          fill="none" stroke="${INK}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M ${cx + 3.5} ${mid + 9} q -6.5 -1.5 -5 5 q 3 -3.5 6.5 -1.5" fill="${INK}"/>`;
+  } else {
+    const n = dur >= 0.5 ? 1 : 2;
+    s = `<line x1="${cx + 3}" y1="${mid - 9}" x2="${cx - 3}" y2="${mid + 10}" stroke="${INK}" stroke-width="2"/>`;
+    for (let i = 0; i < n; i++) {
+      const y = mid - 9 + i * 7;
+      s += `<circle cx="${cx - 2.6}" cy="${y}" r="2.4" fill="${INK}"/>`;
+      s += `<path d="M ${cx - 2.6} ${y} q 5 -1 6.5 -3.5" fill="none" stroke="${INK}" stroke-width="1.8"/>`;
+    }
+  }
+  if (dot) s += `<circle cx="${cx + 10}" cy="${mid - 4}" r="1.9" fill="${INK}"/>`;
+  return s;
+}
+/* Én note (eller pause) tegnet på fem linjer. n = skrevet tone eller null. */
+function staffSVG(n, dur, dot, clefId, w) {
+  const width = w || 70;
+  const cx = width / 2;
+  let lines = '';
+  for (let i = 0; i < 5; i++) {
+    const y = STAFF.top + i * STAFF.gap;
+    lines += `<line x1="2" x2="${width - 2}" y1="${y}" y2="${y}"/>`;
+  }
+  let body = '';
+  if (!n) {
+    body = restBody(dur, dot, cx);
+  } else {
+    const cy = headY(n, clefId);
+    const hollow = dur >= 2;
+    const led = ledgerLines(cy, cx, 10);
+    const up = cy >= STAFF.top + STAFF.gap * 2;
+    const sx = up ? cx + 5.2 : cx - 5.2;
+    const sy2 = up ? cy - 26 : cy + 26;
+    const stem = dur >= 4 ? '' :
+      `<line x1="${sx}" x2="${sx}" y1="${cy + (up ? -0.5 : 0.5)}" y2="${sy2}" stroke="${INK}" stroke-width="1.7"/>`;
+    let flag = '';
+    const nFlags = dur <= 0.25 ? 2 : dur <= 0.5 ? 1 : 0;
+    for (let i = 0; i < nFlags; i++) {
+      const y = sy2 + (up ? i * 6.5 : -i * 6.5);
+      flag += up
+        ? `<path d="M ${sx} ${y} q 8 3 7.5 11 q -2.5 -6 -7.5 -7 z" fill="${INK}"/>`
+        : `<path d="M ${sx} ${y} q 8 -3 7.5 -11 q -2.5 6 -7.5 7 z" fill="${INK}"/>`;
+    }
+    const head = `<ellipse cx="${cx}" cy="${cy}" rx="5.7" ry="4.1" transform="rotate(-16 ${cx} ${cy})"
+        fill="${hollow ? '#fff' : INK}" stroke="${INK}" stroke-width="${hollow ? 2 : 0}"/>`;
+    const acc = n.alt ? `<text x="${cx - 11}" y="${cy + 4.5}" text-anchor="middle" font-size="14"
+        font-weight="700" fill="${INK}">${accGlyph(n.alt)}</text>` : '';
+    const dotG = dot ? `<circle cx="${cx + 11}" cy="${cy - (Math.round((STAFF_BOTTOM - cy) / STAFF.half) % 2 === 0 ? 4 : 0)}" r="1.9" fill="${INK}"/>` : '';
+    body = `<g stroke="${INK}" stroke-width="1.1">${led}</g>${stem}${flag}${head}${acc}${dotG}`;
+  }
+  return `<svg class="staff" viewBox="0 0 ${width} ${STAFF_H}" width="${width}" height="${STAFF_H}" aria-hidden="true">
+    <g stroke="${INK}" stroke-width="1.1">${lines}</g>${body}</svg>`;
+}
+
+/* ================================================================
+   Sangbibliotek — kun melodier som er fri bruk (folketoner eller
+   komponister døde for mer enn 100 år siden). Klingende tonehøyde.
+   Ingen sangtekst er lagt inn: teksten/oversettelsen kan være vernet
+   selv om melodien er fri. Bruk &w= for egne stavelser.
+   ================================================================ */
+const SONGS = [
+  { id: 'lisa', src: 'trad', ts: '4/4', bpm: 100,
+    title: { no: 'Lisa gikk til skolen', sv: 'Lisa gick till skolan', da: 'Lisa gik i skole', en: 'Lisa Went to School' },
+    s: 'C4 D E F G:2 G:2 | A*4 G:4 | F*4 E:2 E:2 | D*4 C:4' },
+
+  { id: 'stjerne', src: 'trad', ts: '4/4', bpm: 96,
+    title: { no: 'Blinke, blinke lille stjerne', sv: 'Blinka lilla stjärna', da: 'Blink, blink lille stjerne', en: 'Twinkle, Twinkle, Little Star' },
+    s: 'C4 C G G A A G:2 | F F E E D D C:2 | G G F F E E D:2 | G G F F E E D:2 | C C G G A A G:2 | F F E E D D C:2' },
+
+  { id: 'baebae', src: 'trad', ts: '4/4', bpm: 96,
+    title: { no: 'Bæ, bæ, lille lam', sv: 'Bä, bä, vita lamm', da: 'Bæ, bæ, lille lam', en: 'Baa, Baa, Black Sheep' },
+    s: 'C4 C G G A A G:2 | F F E E D D C:2 | G G F F E E D:2 | G G F F E E D:2 | C C G G A A G:2 | F F E E D D C:2' },
+
+  { id: 'jakob', src: 'trad', ts: '4/4', bpm: 104,
+    title: { no: 'Fader Jakob', sv: 'Broder Jakob', da: 'Mester Jakob', en: 'Frère Jacques' },
+    s: 'C4 D E C | C D E C | E F G:2 | E F G:2 | G:.5 A:.5 G:.5 F:.5 E C | G:.5 A:.5 G:.5 F:.5 E C | C G3 C4:2 | C4 G3 C4:2' },
+
+  { id: 'mary', src: 'trad', ts: '4/4', bpm: 100,
+    title: { no: 'Mary hadde et lite lam', sv: 'Mary hade ett litet lamm', da: 'Mary havde et lille lam', en: 'Mary Had a Little Lamb' },
+    s: 'E4 D C D E E E:2 | D D D:2 E G G:2 | E D C D E E E E | D D E D C:4' },
+
+  { id: 'ro', src: 'trad', ts: '6/8', bpm: 108,
+    title: { no: 'Ro, ro, ro din båt', sv: 'Ro, ro, ro din båt', da: 'Ro, ro, ro din båd', en: 'Row, Row, Row Your Boat' },
+    s: 'C4:1.5 C:1.5 | C:1 D:.5 E:1.5 | E:1 D:.5 E:1 F:.5 | G:3 | C5:.5*3 G4:.5*3 E:.5*3 C:.5*3 | G:1 F:.5 E:1 D:.5 | C:3' },
+
+  { id: 'glede', src: 'beethoven', ts: '4/4', bpm: 108,
+    title: { no: 'Ode til gleden', sv: 'Glädjens ode', da: 'Ode til glæden', en: 'Ode to Joy' },
+    s: 'E4 E F G | G F E D | C C D E | E:1.5 D:.5 D:2 | E E F G | G F E D | C C D E | D:1.5 C:.5 C:2' },
+
+  { id: 'bjelleklang', src: 'pierpont', ts: '4/4', bpm: 120,
+    title: { no: 'Bjelleklang', sv: 'Bjällerklang', da: 'Bjældeklang', en: 'Jingle Bells' },
+    s: 'E4*2 E:2 | E*2 E:2 | E G C D E:4 | F*4 | F E E E:.5 E:.5 | E D D E D:2 G:2' },
+
+  { id: 'durskala', src: 'exercise', ts: '4/4', bpm: 84,
+    title: { no: 'C-durskala', sv: 'C-durskala', da: 'C-durskala', en: 'C major scale' },
+    s: 'C4 D E F G A B C5 | C5 B A G F E D C4' },
+
+  { id: 'femtoner', src: 'exercise', ts: '4/4', bpm: 80,
+    title: { no: 'Femtonersøvelse', sv: 'Femtonsövning', da: 'Femtoneøvelse', en: 'Five-note exercise' },
+    s: 'C4 D E F G:4 | G F E D C:4 | C:2 E:2 G:2 E:2 | C:4 -:4' },
+
+  { id: 'kromatisk', src: 'exercise', ts: '4/4', bpm: 72,
+    title: { no: 'Kromatisk øvelse', sv: 'Kromatisk övning', da: 'Kromatisk øvelse', en: 'Chromatic exercise' },
+    s: 'C4 C# D D# E F | F# G G# A A# B | C5:4 | B4 A# A G# G F# | F E D# D C# C4:4 -:1' },
+];
+const SONG_BY_ID = {};
+SONGS.forEach(s => { SONG_BY_ID[s.id] = s; });
+
+/* ================================================================
+   URL-format: tolking og bygging
+   Ren logikk uten DOM — testes med node.
+   ================================================================ */
+const SOLFEGE = { do: 'C', ut: 'C', re: 'D', 'ré': 'D', mi: 'E', fa: 'F', sol: 'G', so: 'G', la: 'A', si: 'B', ti: 'B' };
+const DUR_NAMES = { w: 4, h: 2, q: 1, e: 0.5, s: 0.25, t: 0.125 };
+
+function parseDuration(str) {
+  if (!str) return null;
+  let s = String(str).trim().toLowerCase();
+  let dots = 0;
+  while (s.endsWith('.') && !/^[\d.]*$/.test(s.slice(0, -1) + '0')) { dots++; s = s.slice(0, -1); }
+  if (DUR_NAMES[s] !== undefined) {
+    const base = DUR_NAMES[s];
+    return base * (dots === 2 ? 1.75 : dots === 1 ? 1.5 : 1);
+  }
+  // punktum kan også være desimalskille: ":1.5"
+  if (/^\d*\.?\d+$/.test(s)) { const v = parseFloat(s); return v > 0 ? v : null; }
+  if (dots) {
+    const m = s.match(/^([a-z])$/);
+    if (m && DUR_NAMES[m[1]] !== undefined) return DUR_NAMES[m[1]] * (dots === 2 ? 1.75 : 1.5);
+  }
+  return null;
+}
+/* "C#4" / "Ciss4" / "Hess" / "do" -> {letter, alt, oct|null} */
+function parseNoteName(raw) {
+  let s = String(raw).trim();
+  if (!s) return null;
+  let oct = null;
+  const om = s.match(/(-?\d)$/);
+  if (om) { oct = parseInt(om[1], 10); s = s.slice(0, om.index); }
+  const low = s.toLowerCase();
+  for (const k of Object.keys(SOLFEGE)) {
+    if (low === k || low === k + '#' || low === k + 'b') {
+      const letter = SOLFEGE[k];
+      const alt = low.endsWith('#') ? 1 : low.endsWith('b') ? -1 : 0;
+      return { letter, alt, oct };
+    }
+  }
+  const m = s.match(/^([A-Ha-h])(.*)$/);
+  if (!m) return null;
+  let letter = m[1].toUpperCase();
+  let rest = m[2];
+  if (letter === 'H') letter = 'B';
+  let alt = 0;
+  while (rest.length) {
+    const r = rest.toLowerCase();
+    if (r.startsWith('iss')) { alt++; rest = rest.slice(3); }
+    else if (r.startsWith('is')) { alt++; rest = rest.slice(2); }
+    else if (r.startsWith('ess')) { alt--; rest = rest.slice(3); }
+    else if (r.startsWith('es')) { alt--; rest = rest.slice(2); }
+    else if (r[0] === '#' || r[0] === '♯') { alt++; rest = rest.slice(1); }
+    else if (r[0] === 'x' || r[0] === '𝄪') { alt += 2; rest = rest.slice(1); }
+    else if (r[0] === 'b' || r[0] === '♭') { alt--; rest = rest.slice(1); }
+    else if (r[0] === '♮' || r[0] === 'n') { rest = rest.slice(1); }
+    else if (r[0] === 's' && (letter === 'A' || letter === 'E')) { alt--; rest = rest.slice(1); }
+    else return null;
+  }
+  return { letter, alt, oct };
+}
+/* Tolker en tonerekke. Returnerer {events, errors} */
+function parseSong(str, opts) {
+  const o = opts || {};
+  const startOct = o.startOct === undefined ? 4 : o.startOct;
+  const events = [], errors = [];
+  if (!str) return { events, errors };
+  const raw = String(str).replace(/,/g, ' ').replace(/\|\|/g, ' §§ ').replace(/\|/g, ' § ');
+  const tokens = raw.split(/\s+/).filter(Boolean);
+  let prev = null, pendingPhrase = 0, pendingTie = false, lastTok = null;
+  for (const tok0 of tokens) {
+    if (tok0 === '§') { pendingPhrase = Math.max(pendingPhrase, 1); continue; }
+    if (tok0 === '§§') { pendingPhrase = 2; continue; }
+    let tok = tok0;
+    let repeat = 1;
+    const rm = tok.match(/\*(\d+)$/);
+    if (rm) { repeat = Math.min(64, parseInt(rm[1], 10)); tok = tok.slice(0, rm.index); }
+    let tie = false;
+    if (tok.endsWith('~')) { tie = true; tok = tok.slice(0, -1); }
+    if (tok === '') { // "*4" alene = gjenta forrige
+      if (!lastTok) { errors.push('*' + repeat); continue; }
+      tok = lastTok;
+    }
+    let beats = 1;
+    const ci = tok.indexOf(':');
+    if (ci >= 0) {
+      const d = parseDuration(tok.slice(ci + 1));
+      if (d === null) { errors.push(tok0); continue; }
+      beats = d; tok = tok.slice(0, ci);
+    }
+    const isRest = tok === '-' || tok === '_' || tok.toLowerCase() === 'r' || tok.toLowerCase() === 'p';
+    let ev = null;
+    if (isRest) {
+      ev = { rest: true, beats };
+    } else {
+      const n = parseNoteName(tok);
+      if (!n) { errors.push(tok0); continue; }
+      let oct = n.oct;
+      if (oct === null) {
+        if (!prev) oct = startOct;
+        else {
+          // Samme oktavtall som forrige tone når spranget er en kvint eller mindre,
+          // ellers nærmeste tone. Gjør "C G" til en kvint opp, men "C B" til en sekund ned.
+          oct = prev.oct;
+          const d = noteMidi({ letter: n.letter, alt: n.alt, oct }) - noteMidi(prev);
+          if (Math.abs(d) > 7) {
+            let dd = d;
+            while (dd > 6) { oct--; dd -= 12; }
+            while (dd < -6) { oct++; dd += 12; }
+          }
+        }
+      }
+      ev = { rest: false, letter: n.letter, alt: n.alt, oct, beats };
+      prev = { letter: n.letter, alt: n.alt, oct };
+    }
+    for (let i = 0; i < repeat; i++) {
+      const e = Object.assign({}, ev);
+      e.phrase = (i === 0) ? pendingPhrase : 0;
+      e.tie = (i === repeat - 1) ? tie : false;
+      events.push(e);
+      pendingPhrase = 0;
+    }
+    lastTok = tok0.replace(/\*\d+$/, '');
+  }
+  // bind sammen bundne toner med samme tonehøyde
+  const out = [];
+  for (const e of events) {
+    const p = out[out.length - 1];
+    if (p && p.tie && !p.rest && !e.rest && p.letter === e.letter && p.alt === e.alt && p.oct === e.oct) {
+      p.beats += e.beats; p.tie = e.tie; continue;
+    }
+    if (p && p.tie && p.rest && e.rest) { p.beats += e.beats; p.tie = e.tie; continue; }
+    out.push(e);
+  }
+  out.forEach(e => { if (!e.rest) e.midi = noteMidi(e); const g = glyphFor(e.beats); e.dur = g.dur; e.dot = g.dot; });
+  return { events: out, errors };
+}
+/* Ventiltall -> toner. combos som "0", "12", "123". */
+function valveIndex() {
+  const map = {};
+  for (const k of Object.keys(FINGERINGS)) {
+    const m = parseInt(k, 10), e = FINGERINGS[k];
+    [e.f].concat(e.a || []).forEach(c => { (map[c] = map[c] || []).push(m); });
+  }
+  Object.keys(map).forEach(c => map[c].sort((a, b) => a - b));
+  return map;
+}
+function parseValves(str, opts) {
+  const o = opts || {};
+  const idx = valveIndex();
+  const events = [], errors = [];
+  let cur = o.startMidi === undefined ? 60 : o.startMidi;
+  const raw = String(str || '').replace(/,/g, ' ').replace(/\|\|/g, ' §§ ').replace(/\|/g, ' § ');
+  let pendingPhrase = 0;
+  for (const tok0 of raw.split(/\s+/).filter(Boolean)) {
+    if (tok0 === '§') { pendingPhrase = Math.max(pendingPhrase, 1); continue; }
+    if (tok0 === '§§') { pendingPhrase = 2; continue; }
+    let tok = tok0, repeat = 1, beats = 1;
+    const rm = tok.match(/\*(\d+)$/);
+    if (rm) { repeat = Math.min(64, parseInt(rm[1], 10)); tok = tok.slice(0, rm.index); }
+    const ci = tok.indexOf(':');
+    if (ci >= 0) { const d = parseDuration(tok.slice(ci + 1)); if (d === null) { errors.push(tok0); continue; } beats = d; tok = tok.slice(0, ci); }
+    if (tok === '-' || tok.toLowerCase() === 'r') {
+      for (let i = 0; i < repeat; i++) { events.push({ rest: true, beats, phrase: i ? 0 : pendingPhrase }); pendingPhrase = 0; }
+      continue;
+    }
+    const key = tok.split('').sort().join('');
+    const cands = idx[key] || idx[tok];
+    if (!cands || !cands.length) { errors.push(tok0); continue; }
+    let best = cands[0];
+    for (const m of cands) if (Math.abs(m - cur) < Math.abs(best - cur)) best = m;
+    cur = best;
+    for (let i = 0; i < repeat; i++) {
+      const n = spellMidi(best);
+      events.push({ rest: false, letter: n.letter, alt: n.alt, oct: n.oct, midi: best, beats, phrase: i ? 0 : pendingPhrase });
+      pendingPhrase = 0;
+    }
+  }
+  events.forEach(e => { const g = glyphFor(e.beats); e.dur = g.dur; e.dot = g.dot; });
+  return { events, errors };
+}
+/* Bygger tonerekke-tekst fra hendelser */
+function songToTokens(events, naming) {
+  const out = [];
+  let prevMidi = null;
+  for (const e of events) {
+    if (e.phrase === 2) out.push('||'); else if (e.phrase === 1) out.push('|');
+    let t;
+    if (e.rest) t = '-';
+    else {
+      const needOct = prevMidi === null || Math.abs(e.midi - prevMidi) > 6;
+      t = e.letter + (e.alt > 0 ? '#'.repeat(e.alt) : 'b'.repeat(-e.alt)) + (needOct ? e.oct : '');
+      prevMidi = e.midi;
+    }
+    if (Math.abs(e.beats - 1) > 1e-9) t += ':' + (+e.beats.toFixed(4));
+    out.push(t);
+  }
+  // slå sammen like naboer til A*n
+  const packed = [];
+  for (const t of out) {
+    const p = packed[packed.length - 1];
+    if (p && p.t === t && t !== '|' && t !== '||') { p.n++; continue; }
+    packed.push({ t, n: 1 });
+  }
+  return packed.map(p => p.n > 1 ? p.t + '*' + p.n : p.t).join(' ');
+}
+/* Taktart "4/4" -> taktslag per takt */
+function barBeats(ts) {
+  const m = String(ts || '4/4').match(/^(\d+)\s*\/\s*(\d+)$/);
+  if (!m) return 4;
+  return parseInt(m[1], 10) * 4 / parseInt(m[2], 10);
+}
+function beatUnit(ts) {
+  const m = String(ts || '4/4').match(/^(\d+)\s*\/\s*(\d+)$/);
+  if (!m) return 1;
+  const den = parseInt(m[2], 10), num = parseInt(m[1], 10);
+  const u = 4 / den;
+  return (den === 8 && num % 3 === 0) ? u * 3 : u;   // 6/8, 9/8, 12/8 teller punkterte
+}
+/* Markerer taktstart på hendelsene */
+function markBars(events, ts, upbeat) {
+  const per = barBeats(ts);
+  let pos = (upbeat ? per - upbeat : 0);
+  for (const e of events) {
+    e.bar = Math.abs(pos % per) < 1e-6;
+    e.beatPos = pos;
+    pos += e.beats;
+  }
+  if (events.length) events[0].bar = false;
+  return events;
+}
+
+/* ================================================================
+   Lyd: tone, metronom og planlegger (Web Audio)
+   brassTone er hentet fra punnerud/notecircle.
+   ================================================================ */
+let AC = null;
+function ensureAC() {
+  if (!AC) {
+    const Ctor = window.AudioContext || window.webkitAudioContext;
+    if (!Ctor) return null;
+    AC = new Ctor();
+  }
+  if (AC.state === 'suspended') AC.resume();
+  return AC;
+}
+function midiFreq(m) { return 440 * Math.pow(2, (m - 69) / 12); }
+
+function brassTone(ac, freq, t0, dur, dest, gainMul) {
+  const g = ac.createGain(), peak = 0.30 * (gainMul || 1);
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(peak, t0 + 0.03);
+  g.gain.exponentialRampToValueAtTime(peak * 0.66, t0 + Math.min(0.18, dur * 0.5));
+  g.gain.setValueAtTime(peak * 0.66, t0 + Math.max(0.08, dur - 0.06));
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  const f = ac.createBiquadFilter();
+  f.type = 'lowpass'; f.Q.value = 0.9;
+  f.frequency.setValueAtTime(Math.min(Math.max(freq * 3.2, 300), 3800), t0);
+  f.frequency.exponentialRampToValueAtTime(Math.min(Math.max(freq * 5.5, 400), 4800), t0 + 0.06);
+  const o1 = ac.createOscillator(); o1.type = 'sawtooth'; o1.frequency.value = freq; o1.detune.value = -4;
+  const o2 = ac.createOscillator(); o2.type = 'sawtooth'; o2.frequency.value = freq; o2.detune.value = 5;
+  o1.connect(f); o2.connect(f); f.connect(g); g.connect(dest || ac.destination);
+  o1.start(t0); o2.start(t0); o1.stop(t0 + dur + 0.05); o2.stop(t0 + dur + 0.05);
+}
+function reedTone(ac, freq, t0, dur, dest) {
+  const g = ac.createGain();
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(0.26, t0 + 0.05);
+  g.gain.setValueAtTime(0.26, t0 + Math.max(0.08, dur - 0.07));
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  const f = ac.createBiquadFilter(); f.type = 'lowpass'; f.Q.value = 1.4;
+  f.frequency.setValueAtTime(Math.min(freq * 4, 5000), t0);
+  const o1 = ac.createOscillator(); o1.type = 'triangle'; o1.frequency.value = freq;
+  const o2 = ac.createOscillator(); o2.type = 'sine'; o2.frequency.value = freq * 2; o2.detune.value = 3;
+  const g2 = ac.createGain(); g2.gain.value = 0.25;
+  o1.connect(f); o2.connect(g2); g2.connect(f); f.connect(g); g.connect(dest || ac.destination);
+  o1.start(t0); o2.start(t0); o1.stop(t0 + dur + 0.05); o2.stop(t0 + dur + 0.05);
+}
+function pluckTone(ac, freq, t0, dur, dest) {
+  const g = ac.createGain();
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(0.32, t0 + 0.008);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + Math.min(dur + 0.4, 2.2));
+  const o = ac.createOscillator(); o.type = 'triangle'; o.frequency.value = freq;
+  const o2 = ac.createOscillator(); o2.type = 'sine'; o2.frequency.value = freq * 2;
+  const g2 = ac.createGain(); g2.gain.value = 0.3;
+  o.connect(g); o2.connect(g2); g2.connect(g); g.connect(dest || ac.destination);
+  o.start(t0); o2.start(t0);
+  o.stop(t0 + dur + 0.5); o2.stop(t0 + dur + 0.5);
+}
+function playTone(midi, dur, when, group) {
+  const ac = ensureAC(); if (!ac) return;
+  const t0 = when === undefined ? ac.currentTime + 0.01 : when;
+  const f = midiFreq(midi);
+  const d = Math.max(0.12, Math.min(dur || 0.5, 4));
+  if (group === 'brass') brassTone(ac, f, t0, d);
+  else if (group === 'woodwind' || group === 'strings') reedTone(ac, f, t0, d);
+  else pluckTone(ac, f, t0, d);
+}
+function click(when, accent) {
+  const ac = ensureAC(); if (!ac) return;
+  const t0 = when === undefined ? ac.currentTime + 0.01 : when;
+  const o = ac.createOscillator(), g = ac.createGain();
+  o.type = 'square';
+  o.frequency.setValueAtTime(accent ? 1600 : 1050, t0);
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(accent ? 0.28 : 0.16, t0 + 0.002);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.055);
+  o.connect(g); g.connect(ac.destination);
+  o.start(t0); o.stop(t0 + 0.07);
+}
+
+/* ---------------- Planlegger ---------------- */
+const player = {
+  playing: false, timer: null, notes: [], clicks: [], ni: 0, ci: 0,
+  onNote: null, onStop: null, t0: 0, endTime: 0,
+};
+function buildSchedule(events, opts) {
+  const o = opts, spb = 60 / o.bpm;
+  const notes = [];
+  let t = 0;
+  for (let i = 0; i < events.length; i++) {
+    const e = events[i];
+    notes.push({ i, t, dur: e.beats * spb, rest: e.rest, midi: e.rest ? null : e.midi });
+    t += e.beats * spb;
+  }
+  const clicks = [];
+  const unit = beatUnit(o.ts) * spb;
+  const per = barBeats(o.ts) * spb;
+  const startOffset = o.upbeat ? (per - o.upbeat * spb) : 0;
+  for (let x = 0; x < t - 1e-6; x += unit) {
+    const inBar = (x + startOffset) % per;
+    clicks.push({ t: x, accent: Math.abs(inBar) < 1e-6 || Math.abs(inBar - per) < 1e-6 });
+  }
+  return { notes, clicks, total: t, spb, unit };
+}
+function startPlayback(events, opts) {
+  const ac = ensureAC(); if (!ac) return false;
+  stopPlayback();
+  const from = opts.from || 0;
+  const sc = buildSchedule(events.slice(from), opts);
+  const lead = 0.12 + (opts.countIn ? opts.countIn * sc.unit : 0);
+  player.t0 = ac.currentTime + lead;
+  player.notes = sc.notes.map(n => ({ ...n, i: n.i + from }));
+  player.clicks = opts.metronome ? sc.clicks : [];
+  if (opts.countIn && opts.metronome) {
+    for (let k = opts.countIn; k > 0; k--) player.clicks.unshift({ t: -k * sc.unit, accent: k === opts.countIn });
+  }
+  player.ni = 0; player.ci = 0; player.playing = true;
+  player.endTime = player.t0 + sc.total;
+  player.opts = opts;
+  player.timer = setInterval(() => tick(ac), 25);
+  tick(ac);
+  return true;
+}
+function tick(ac) {
+  if (!player.playing) return;
+  const now = ac.currentTime, horizon = now + 0.15, o = player.opts;
+  while (player.ci < player.clicks.length && player.t0 + player.clicks[player.ci].t < horizon) {
+    const c = player.clicks[player.ci++];
+    click(player.t0 + c.t, c.accent);
+  }
+  while (player.ni < player.notes.length && player.t0 + player.notes[player.ni].t < horizon) {
+    const n = player.notes[player.ni++];
+    if (o.tone && !n.rest) playTone(n.midi + (o.transpose || 0), n.dur * 0.92, player.t0 + n.t, o.group);
+    const delay = Math.max(0, (player.t0 + n.t - now) * 1000);
+    setTimeout(() => { if (player.playing && player.onNote) player.onNote(n.i); }, delay);
+  }
+  if (now > player.endTime + 0.05) {
+    const cb = player.onStop; stopPlayback(); if (cb) cb();
+  }
+}
+function stopPlayback() {
+  player.playing = false;
+  if (player.timer) clearInterval(player.timer);
+  player.timer = null;
+}
+
+/* ================================================================
+   UI: tonestripe, paneler, utskrift
+   ================================================================ */
+const $ = id => document.getElementById(id);
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+
+function curInstr() { return INSTR_BY_ID[state.instrId] || INSTR_BY_ID.tromp_bb; }
+/* Tonen slik den skal leses på valgt instrument.
+   state.pitchMode = 'written': tokenene ER det spilleren leser (standard).
+   state.pitchMode = 'concert': tokenene er klingende, og transponeres til instrumentet. */
+function writtenOf(e) {
+  let c = { letter: e.letter, alt: e.alt, oct: e.oct };
+  if (state.transpose) c = spellMidi(e.midi + state.transpose);
+  return state.pitchMode === 'concert' ? toWritten(c, curInstr()) : c;
+}
+/* Klingende midi — det som faktisk skal høres. */
+function soundingMidi(e) {
+  if (e.rest) return null;
+  if (state.pitchMode === 'concert') return e.midi + state.transpose;
+  return noteMidi(toConcert(writtenOf(e), curInstr()));
+}
+function fingKind(res) { return res ? res.kind : null; }
+
+function cardMinWidth(kind) {
+  if (kind === 'keys') return 158;
+  if (kind === 'slide') return 142;
+  return 62;
+}
+function cardWidth(e, kind) {
+  const w = 62 + state.air * 30 * Math.log2(Math.max(0.25, e.beats) * 2);
+  return Math.round(clamp(Math.max(w, cardMinWidth(kind)), 56, 240));
+}
+
+/* Ett kort: grep øverst, bokstav, note på linjene, evt. stavelse */
+function makeCard(e, i, opts) {
+  const o = opts || {};
+  const ins = curInstr();
+  const el = document.createElement('div');
+  el.className = 'note';
+  let kind = null, fingHtml = '', label = '', outOfRange = false;
+  let w = writtenOf(e), wm = e.rest ? null : noteMidi(w);
+
+  if (!e.rest && state.showFing) {
+    const res = fingeringFor(ins, wm, { german: state.recorderGerman });
+    const r = renderFingering(res);
+    kind = fingKind(res);
+    if (r) { fingHtml = r.svg; label = r.label || ''; }
+    else fingHtml = `<span class="fingtxt">${esc(T('ui.noFingering'))}</span>`;
+    if (wm < ins.lo || wm > ins.hi) outOfRange = true;
+  }
+  const width = cardWidth(e, kind);
+  el.style.setProperty('--w', width + 'px');
+  if (!state.showFing || e.rest) el.classList.add('nofing');
+  if (e.rest) el.classList.add('rest');
+  if (outOfRange) el.classList.add('out');
+
+  const name = e.rest ? '–'
+    : esc(dispNote(w)) + (state.showOct ? `<small>${w.oct}</small>` : '');
+  const staff = staffSVG(e.rest ? null : w, e.dur, e.dot, ins.clef, Math.min(width - 8, 150));
+  const lyric = (state.words && state.words[i]) ? esc(state.words[i]) : '';
+  el.innerHTML =
+    (state.showFing ? `<div class="fingwrap">${e.rest ? '' : fingHtml}</div>` : '') +
+    `<div class="name">${name}</div>` +
+    `<div class="staffwrap">${staff}</div>` +
+    `<div class="lyric">${lyric}</div>`;
+  if (!o.print) {
+    el.setAttribute('role', 'button');
+    el.setAttribute('tabindex', '0');
+    const t = e.rest ? T('ui.rest') : dispNote(w) + w.oct + (label ? ' · ' + label : '');
+    el.setAttribute('aria-label', `${i + 1}: ${t}`);
+    el.addEventListener('click', () => { stopIfPlaying(); go(i); if (state.tone && !e.rest) playTone(soundingMidi(e), 0.6, undefined, ins.group); });
+    el.addEventListener('keydown', ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); go(i); } });
+  }
+  return el;
+}
+
+let cards = [];
+function renderStrip() {
+  const strip = $('strip');
+  strip.innerHTML = '';
+  cards = [];
+  let outCount = 0;
+  const ins = curInstr();
+  state.events.forEach((e, i) => {
+    if (e.bar && state.showBars) {
+      const b = document.createElement('div'); b.className = 'barline'; strip.appendChild(b);
+    }
+    const el = makeCard(e, i);
+    if (e.phrase === 1) el.classList.add('gap');
+    if (e.phrase === 2) el.classList.add('gap2');
+    if (el.classList.contains('out')) outCount++;
+    strip.appendChild(el);
+    cards.push(el);
+  });
+  const warn = $('warn');
+  if (outCount) { warn.hidden = false; warn.textContent = T('ui.outOfRange', { n: outCount, instr: instrName(ins.id) }); }
+  else warn.hidden = true;
+  updateHeader();
+}
+function centerCard(el, instant) {
+  if (!el) return;
+  const strip = $('strip');
+  const r = el.getBoundingClientRect(), s = strip.getBoundingClientRect();
+  const delta = (r.left + r.width / 2) - (s.left + s.width / 2);
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  strip.scrollBy({ left: delta, behavior: (instant || reduce) ? 'auto' : 'smooth' });
+}
+function go(i, instant) {
+  if (!state.events.length) return;
+  state.cur = clamp(i, 0, state.events.length - 1);
+  cards.forEach((c, j) => c.classList.toggle('current', j === state.cur));
+  $('pos').textContent = state.cur + 1;
+  $('prev').disabled = state.cur === 0;
+  $('next').disabled = state.cur === state.events.length - 1;
+  centerCard(cards[state.cur], instant);
+}
+function instrName(id) { return T('instruments.' + id) || id; }
+function updateHeader() {
+  const ins = curInstr();
+  $('tbTitle').textContent = '♪ ' + (state.title || T('ui.untitled'));
+  const bits = [instrName(ins.id), T('clefs.' + ins.clef), state.ts, state.bpm + ' BPM'];
+  if (ins.letters || ins.semis) bits.push(T('ui.' + (state.pitchMode === 'written' ? 'writtenPitch' : 'concertPitch')));
+  $('tbMeta').textContent = bits.join(' · ');
+  $('ofTotal').textContent = T('ui.ofTotal', { n: state.events.length });
+  document.documentElement.lang = state.lang;
+}
+function renderLegend() {
+  const ins = curInstr();
+  const l = $('legend');
+  const chart = ins.fing;
+  let items = '';
+  if (chart === 'brass3' || chart === 'brass4' || chart === 'horn_f')
+    items = `<span class="pill"><span class="dot on"></span>${esc(T('ui.pressed'))}</span>
+             <span class="pill"><span class="dot"></span>${esc(T('ui.open'))}</span>`;
+  else if (chart === 'rec_c' || chart === 'rec_f')
+    items = `<span class="pill"><span class="dot on"></span>${esc(T('ui.covered'))}</span>
+             <span class="pill"><span class="dot half"></span>${esc(T('ui.halfHole'))}</span>
+             <span class="pill"><span class="dot"></span>${esc(T('ui.openHole'))}</span>`;
+  else if (chart === 'sax' || chart === 'flute' || chart === 'clarinet')
+    items = `<span class="pill"><span class="dot on"></span>${esc(T('ui.pressed'))}</span>
+             <span class="pill"><span class="dot"></span>${esc(T('ui.open'))}</span>`;
+  else if (chart === 'slide') items = `<span class="pill">${esc(T('ui.slidePos'))}</span>`;
+  else if (chart === 'keys') items = `<span class="pill">${esc(T('ui.keyboard'))}</span>`;
+  else if (chart && chart.indexOf('str_') === 0) items = `<span class="pill">${esc(T('ui.stringPos'))}</span>`;
+  l.innerHTML = items + `<button class="pill" id="openPrint">🖨 ${esc(T('ui.print'))}</button>`;
+  $('openPrint').addEventListener('click', openPrint);
+  $('hint').textContent = T('ui.hint');
+}
+
+/* ---------------- Paneler ---------------- */
+function openSheet(id) { $(id).hidden = false; }
+function closeSheet(id) { $(id).hidden = true; }
+function switchRow(labelKey, subKey, on, onToggle) {
+  const row = document.createElement('div');
+  row.className = 'row';
+  row.innerHTML = `<label>${esc(T(labelKey))}${subKey ? `<span class="sub">${esc(T(subKey))}</span>` : ''}</label>`;
+  const b = document.createElement('button');
+  b.className = 'switch' + (on ? ' on' : '');
+  b.setAttribute('role', 'switch'); b.setAttribute('aria-checked', on ? 'true' : 'false');
+  b.addEventListener('click', () => {
+    const v = !b.classList.contains('on');
+    b.classList.toggle('on', v); b.setAttribute('aria-checked', v ? 'true' : 'false');
+    onToggle(v);
+  });
+  row.appendChild(b);
+  return row;
+}
+function segRow(labelKey, options, value, onPick) {
+  const row = document.createElement('div');
+  row.className = 'row';
+  row.innerHTML = `<label>${esc(T(labelKey))}</label>`;
+  const seg = document.createElement('div');
+  seg.className = 'seg';
+  options.forEach(o => {
+    const b = document.createElement('button');
+    b.textContent = o.label;
+    b.className = o.value === value ? 'on' : '';
+    b.addEventListener('click', () => onPick(o.value));
+    seg.appendChild(b);
+  });
+  row.appendChild(seg);
+  return row;
+}
+function rangeRow(labelKey, min, max, step, value, fmtFn, onInput) {
+  const row = document.createElement('div');
+  row.className = 'row';
+  row.innerHTML = `<label>${esc(T(labelKey))}<span class="sub" data-v>${esc(fmtFn(value))}</span></label>`;
+  const inp = document.createElement('input');
+  inp.type = 'range'; inp.min = min; inp.max = max; inp.step = step; inp.value = value;
+  inp.addEventListener('input', () => {
+    const v = parseFloat(inp.value);
+    row.querySelector('[data-v]').textContent = fmtFn(v);
+    onInput(v);
+  });
+  row.appendChild(inp);
+  return row;
+}
+function renderSettings() {
+  const b = $('setBody');
+  b.innerHTML = '';
+  $('setTitle').textContent = T('ui.settings');
+
+  b.appendChild(segRow('ui.language', LANG_ORDER.map(l => ({ value: l, label: T('meta.name', null) && I18N[l] ? I18N[l].meta.name : l })), state.lang,
+    v => { state.lang = v; saveState(); rebuildAll(); renderSettings(); }));
+
+  // Instrument: gruppe -> familie -> variant
+  const ins = curInstr();
+  const gRow = document.createElement('div');
+  gRow.className = 'row';
+  gRow.innerHTML = `<label>${esc(T('ui.instrument'))}</label>`;
+  const wrap = document.createElement('div');
+  wrap.className = 'seg';
+  const famSel = document.createElement('select');
+  FAMILIES.forEach(f => {
+    const og = famSel.querySelector(`optgroup[data-g="${f.group}"]`) || (() => {
+      const g = document.createElement('optgroup');
+      g.label = T('instrumentGroups.' + f.group); g.dataset.g = f.group; famSel.appendChild(g); return g;
+    })();
+    const o = document.createElement('option');
+    o.value = f.id; o.textContent = T('families.' + f.id) || f.id;
+    if (f.id === ins.family) o.selected = true;
+    og.appendChild(o);
+  });
+  famSel.addEventListener('change', () => {
+    const f = FAMILY_BY_ID[famSel.value];
+    setInstrument(f.std); renderSettings();
+  });
+  const varSel = document.createElement('select');
+  const fam = FAMILY_BY_ID[ins.family];
+  fam.members.forEach(id => {
+    const o = document.createElement('option');
+    o.value = id; o.textContent = instrName(id);
+    if (id === ins.id) o.selected = true;
+    varSel.appendChild(o);
+  });
+  varSel.addEventListener('change', () => { setInstrument(varSel.value); renderSettings(); });
+  wrap.appendChild(famSel);
+  if (fam.members.length > 1) wrap.appendChild(varSel);
+  gRow.appendChild(wrap);
+  b.appendChild(gRow);
+
+  if (ins.family === 'recorder') {
+    b.appendChild(segRow('ui.recorderSystem', [
+      { value: false, label: T('ui.baroque') }, { value: true, label: T('ui.german') },
+    ], state.recorderGerman, v => { state.recorderGerman = v; saveState(); rebuildAll(); renderSettings(); }));
+  }
+  b.appendChild(segRow('ui.noteNames', [
+    { value: 'native', label: T('ui.nativeNames') }, { value: 'intl', label: T('ui.intlNames') },
+  ], state.naming, v => { state.naming = v; saveState(); rebuildAll(); renderSettings(); }));
+
+  if (ins.letters || ins.semis) {
+    b.appendChild(segRow('ui.pitchView', [
+      { value: 'written', label: T('ui.writtenPitch') }, { value: 'concert', label: T('ui.concertPitch') },
+    ], state.pitchMode, v => { state.pitchMode = v; saveState(); rebuildAll(); renderSettings(); syncUrl(); }));
+  }
+  b.appendChild(rangeRow('ui.tempo', 40, 208, 1, state.bpm, v => v + ' BPM', v => { state.bpm = v; updateHeader(); saveState(); syncUrl(); }));
+  b.appendChild(switchRow('ui.autoAdvance', 'ui.autoAdvanceSub', state.auto, v => { state.auto = v; saveState(); syncUrl(); }));
+  b.appendChild(switchRow('ui.metronome', null, state.metronome, v => { state.metronome = v; saveState(); syncUrl(); }));
+  b.appendChild(switchRow('ui.toneSound', null, state.tone, v => { state.tone = v; saveState(); syncUrl(); }));
+  b.appendChild(switchRow('ui.countIn', null, state.countIn > 0, v => { state.countIn = v ? 4 : 0; saveState(); syncUrl(); }));
+  b.appendChild(rangeRow('ui.air', 0, 1.6, 0.1, state.air, v => Math.round(v * 100) + ' %', v => { state.air = v; saveState(); renderStrip(); go(state.cur, true); }));
+  b.appendChild(switchRow('ui.showFing', null, state.showFing, v => { state.showFing = v; saveState(); rebuildAll(); }));
+  b.appendChild(switchRow('ui.showBars', null, state.showBars, v => { state.showBars = v; saveState(); rebuildAll(); }));
+  b.appendChild(switchRow('ui.showOct', null, state.showOct, v => { state.showOct = v; saveState(); rebuildAll(); }));
+
+  const tr = document.createElement('div');
+  tr.className = 'row';
+  tr.innerHTML = `<label>${esc(T('ui.transpose'))}<span class="sub">${state.transpose > 0 ? '+' : ''}${state.transpose} ${esc(T('ui.semitones'))}</span></label>`;
+  const seg = document.createElement('div'); seg.className = 'seg';
+  [-12, -1, 0, 1, 12].forEach(d => {
+    const btn = document.createElement('button');
+    btn.textContent = d === 0 ? '0' : (d > 0 ? '+' + d : String(d));
+    btn.addEventListener('click', () => {
+      state.transpose = d === 0 ? 0 : clamp(state.transpose + d, -24, 24);
+      state.transposeLocked = d !== 0;
+      if (d === 0) autoOctave();
+      saveState(); rebuildAll(); renderSettings(); syncUrl();
+    });
+    seg.appendChild(btn);
+  });
+  tr.appendChild(seg); b.appendChild(tr);
+
+  const about = document.createElement('p');
+  about.className = 'hint';
+  about.innerHTML = T('ui.about');
+  b.appendChild(about);
+}
+function renderSongs() {
+  $('songsTitle').textContent = T('ui.songs');
+  const list = $('songList');
+  list.innerHTML = '';
+  SONGS.forEach(s => {
+    const b = document.createElement('button');
+    b.className = 'songitem' + (state.songId === s.id ? ' on' : '');
+    b.innerHTML = `<b>${esc(s.title[state.lang] || s.title.en)}</b><span>${esc(T('songs.src.' + s.src))} · ${esc(s.ts)} · ${s.bpm} BPM</span>`;
+    b.addEventListener('click', () => { loadSong(s.id); closeSheet('songs'); });
+    list.appendChild(b);
+  });
+  $('songsNote').textContent = T('ui.songsNote');
+}
+function renderShare() {
+  $('shareTitle').textContent = T('ui.share');
+  const b = $('shareBody');
+  b.innerHTML = '';
+  const url = buildUrl();
+  const box = document.createElement('div');
+  box.className = 'urlbox'; box.textContent = url;
+  b.appendChild(box);
+  const row = document.createElement('div');
+  row.className = 'btnrow';
+  const copy = document.createElement('button');
+  copy.className = 'gold'; copy.textContent = T('ui.copyLink');
+  copy.addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(url); copy.textContent = T('ui.copied'); }
+    catch (e) { copy.textContent = T('ui.copyFail'); }
+    setTimeout(() => { copy.textContent = T('ui.copyLink'); }, 1600);
+  });
+  row.appendChild(copy);
+  b.appendChild(row);
+
+  const h = document.createElement('div');
+  h.className = 'row';
+  h.innerHTML = `<label>${esc(T('ui.editNotes'))}<span class="sub">${esc(T('ui.editNotesSub'))}</span></label>`;
+  b.appendChild(h);
+  const ta = document.createElement('textarea');
+  ta.value = state.sourceText;
+  ta.spellcheck = false;
+  b.appendChild(ta);
+  const ti = document.createElement('div');
+  ti.className = 'row';
+  ti.innerHTML = `<label>${esc(T('ui.songTitle'))}</label>`;
+  const tin = document.createElement('input');
+  tin.type = 'text'; tin.value = state.title;
+  ti.appendChild(tin); b.appendChild(ti);
+  const tsRow = document.createElement('div');
+  tsRow.className = 'row';
+  tsRow.innerHTML = `<label>${esc(T('ui.timeSig'))}</label>`;
+  const tsIn = document.createElement('input');
+  tsIn.type = 'text'; tsIn.value = state.ts; tsIn.style.width = '90px';
+  tsRow.appendChild(tsIn); b.appendChild(tsRow);
+
+  const row2 = document.createElement('div');
+  row2.className = 'btnrow';
+  const apply = document.createElement('button');
+  apply.className = 'gold'; apply.textContent = T('ui.apply');
+  apply.addEventListener('click', () => {
+    state.title = tin.value.trim();
+    state.ts = /^\d+\s*\/\s*\d+$/.test(tsIn.value.trim()) ? tsIn.value.trim().replace(/\s/g, '') : state.ts;
+    setSource(ta.value);
+    renderShare();
+  });
+  row2.appendChild(apply);
+  const help = document.createElement('button');
+  help.textContent = T('ui.formatHelp');
+  help.addEventListener('click', () => { helpEl.hidden = !helpEl.hidden; });
+  row2.appendChild(help);
+  b.appendChild(row2);
+  const helpEl = document.createElement('p');
+  helpEl.className = 'hint'; helpEl.hidden = true;
+  helpEl.style.textAlign = 'left';
+  helpEl.innerHTML = T('ui.formatHelpText');
+  b.appendChild(helpEl);
+  const err = document.createElement('p');
+  err.className = 'warn';
+  err.textContent = state.parseErrors.length ? T('ui.parseErrors', { list: state.parseErrors.slice(0, 8).join(' ') }) : '';
+  err.hidden = !state.parseErrors.length;
+  b.appendChild(err);
+}
+
+/* ---------------- Utskrift ---------------- */
+let pRows = 11, pZoom = 0.6, pLand = false;
+function openPrint() { $('printview').hidden = false; renderPrint(); }
+function renderPrint() {
+  const ins = curInstr();
+  $('ptitle').textContent = '♪ ' + (state.title || T('ui.untitled'));
+  $('psub').textContent = [instrName(ins.id), T('clefs.' + ins.clef), state.ts, state.bpm + ' BPM'].join(' · ');
+  $('rowVal').textContent = pRows >= 40 ? T('ui.all') : pRows;
+  $('zVal').textContent = Math.round(pZoom * 100) + '%';
+  $('orient').textContent = pLand ? T('ui.landscape') : T('ui.portrait');
+  $('perLineLbl').textContent = T('ui.perLine');
+  $('psheet').classList.toggle('land', pLand);
+  $('pageStyle').textContent = `@page{size:A4 ${pLand ? 'landscape' : 'portrait'};margin:10mm}`;
+  $('plegend').textContent = T('ui.printLegend');
+  const g = $('pgrid');
+  g.innerHTML = '';
+  g.style.zoom = pZoom;
+  let n = 0;
+  state.events.forEach((e, i) => {
+    if (e.bar && state.showBars && n > 0) {
+      const b = document.createElement('div'); b.className = 'barline'; g.appendChild(b);
+    }
+    g.appendChild(makeCard(e, i, { print: true }));
+    n++;
+    if (n % pRows === 0 || e.phrase === 2) {
+      const br = document.createElement('div'); br.className = 'pbreak'; g.appendChild(br);
+      if (e.phrase === 2) n = 0;
+    }
+  });
+}
+
+/* ================================================================
+   Tilstand, cookie, URL og oppstart
+   ================================================================ */
+const COOKIE = 'visualnotes';
+const DEFAULTS = {
+  lang: 'no', instrId: 'tromp_bb', naming: 'native', pitchMode: 'written', recorderGerman: false,
+  bpm: 100, ts: '4/4', upbeat: 0, auto: false, metronome: true, tone: true, countIn: 4,
+  air: 0.6, showFing: true, showBars: true, showOct: true, transpose: 0,
+};
+const PERSIST = ['lang', 'instrId', 'naming', 'pitchMode', 'recorderGerman', 'bpm', 'auto',
+                 'metronome', 'tone', 'countIn', 'air', 'showFing', 'showBars', 'showOct'];
+const state = Object.assign({}, DEFAULTS, {
+  title: '', songId: null, sourceText: '', events: [], cur: 0, words: null, parseErrors: [],
+  transposeLocked: false,
+});
+
+function readCookie() {
+  const m = document.cookie.match(new RegExp('(?:^|; )' + COOKIE + '=([^;]*)'));
+  if (!m) return {};
+  try { return JSON.parse(decodeURIComponent(m[1])) || {}; } catch (e) { return {}; }
+}
+function saveState() {
+  const o = {};
+  PERSIST.forEach(k => { o[k] = state[k]; });
+  try {
+    document.cookie = COOKIE + '=' + encodeURIComponent(JSON.stringify(o)) +
+      ';path=/;max-age=31536000;SameSite=Lax';
+  } catch (e) { /* ignorer */ }
+}
+function setInstrument(id) {
+  if (!INSTR_BY_ID[id]) return;
+  state.instrId = id;
+  autoOctave();
+  saveState(); rebuildAll(); syncUrl();
+}
+/* Flytter sangen oktavvis slik at den ligger innenfor instrumentets register.
+   Rører ikke noe hvis den allerede passer, eller hvis brukeren har valgt transponering selv. */
+function autoOctave() {
+  if (state.transposeLocked) return;
+  const ins = curInstr();
+  const notes = state.events.filter(e => !e.rest);
+  if (!notes.length) return;
+  const lo = Math.min.apply(null, notes.map(e => e.midi));
+  const hi = Math.max.apply(null, notes.map(e => e.midi));
+  const rng = chartRange(ins);
+  const fits = k => (lo + k * 12) >= rng.lo && (hi + k * 12) <= rng.hi;
+  if (fits(0)) { state.transpose = 0; return; }
+  for (let d = 1; d <= 3; d++) {
+    if (fits(-d)) { state.transpose = -d * 12; return; }
+    if (fits(d)) { state.transpose = d * 12; return; }
+  }
+  // Ingen oktav passer helt: velg den som gir færrest toner utenfor
+  let best = 0, bestOut = Infinity;
+  for (let k = -3; k <= 3; k++) {
+    const out = notes.filter(e => e.midi + k * 12 < rng.lo || e.midi + k * 12 > rng.hi).length;
+    if (out < bestOut) { bestOut = out; best = k; }
+  }
+  state.transpose = best * 12;
+}
+function setSource(text, kind, keepSong) {
+  if (!keepSong) state.songId = null;
+  state.sourceText = String(text || '').trim();
+  let r;
+  if (kind === 'valves') {
+    // Ventiltall gir skrevet tonehøyde direkte — ingen transponering
+    r = parseValves(state.sourceText, { startMidi: 60 });
+    state.sourceText = songToTokens(r.events);
+  } else {
+    r = parseSong(state.sourceText, { startOct: 4 });
+  }
+  state.parseErrors = r.errors;
+  state.events = markBars(r.events, state.ts, state.upbeat);
+  state.cur = 0;
+  autoOctave();
+  rebuildAll();
+  syncUrl();
+}
+function loadSong(id) {
+  const s = SONG_BY_ID[id];
+  if (!s) return;
+  state.songId = id;
+  state.title = s.title[state.lang] || s.title.en;
+  state.ts = s.ts; state.bpm = s.bpm; state.upbeat = s.upbeat || 0; state.words = null;
+  state.transposeLocked = false;
+  setSource(s.s, null, true);
+  go(0, true);
+}
+function rebuildAll() {
+  if (state.songId && SONG_BY_ID[state.songId]) {
+    state.title = SONG_BY_ID[state.songId].title[state.lang] || SONG_BY_ID[state.songId].title.en;
+  }
+  state.events = markBars(state.events, state.ts, state.upbeat);
+  renderStrip();
+  renderLegend();
+  go(state.cur, true);
+}
+
+/* ---------------- URL ---------------- */
+const P_ALIAS = { song: 's', notes: 's', instrument: 'i', instr: 'i', lang: 'l', title: 't',
+                  tempo: 'bpm', pitch: 'p', words: 'w', valves: 'v', key: 'k' };
+function query() {
+  const p = new URLSearchParams(location.search);
+  const o = {};
+  p.forEach((v, k) => { o[P_ALIAS[k] || k] = v; });
+  return o;
+}
+function applyQuery(q) {
+  if (q.l && LANG_ORDER.indexOf(q.l) >= 0) state.lang = q.l;
+  if (q.i && INSTR_BY_ID[q.i]) state.instrId = q.i;
+  if (q.ts && /^\d+\/\d+$/.test(q.ts)) state.ts = q.ts;
+  if (q.up !== undefined) state.upbeat = Math.max(0, parseFloat(q.up) || 0);
+  if (q.bpm) state.bpm = clamp(parseInt(q.bpm, 10) || DEFAULTS.bpm, 30, 240);
+  if (q.p === 'c' || q.p === 'concert') state.pitchMode = 'concert';
+  if (q.p === 'w' || q.p === 'written') state.pitchMode = 'written';
+  if (q.k) { state.transpose = clamp(parseInt(q.k, 10) || 0, -24, 24); state.transposeLocked = true; }
+  if (q.n === 'intl' || q.n === 'native') state.naming = q.n;
+  ['auto', 'met', 'tone'].forEach(k => {
+    if (q[k] !== undefined) {
+      const v = q[k] !== '0' && q[k] !== 'false';
+      if (k === 'auto') state.auto = v; else if (k === 'met') state.metronome = v; else state.tone = v;
+    }
+  });
+  if (q.count !== undefined) state.countIn = clamp(parseInt(q.count, 10) || 0, 0, 8);
+  if (q.air !== undefined) state.air = clamp(parseFloat(q.air), 0, 1.6);
+  if (q.fing !== undefined) state.showFing = q.fing !== '0';
+  if (q.bars !== undefined) state.showBars = q.bars !== '0';
+  if (q.w) state.words = q.w.split('|').map(x => x.trim());
+  if (q.t) state.title = q.t;
+
+  if (q.id && SONG_BY_ID[q.id]) {
+    const s = SONG_BY_ID[q.id];
+    state.songId = q.id;
+    if (!q.t) state.title = s.title[state.lang] || s.title.en;
+    if (!q.ts) state.ts = s.ts;
+    if (!q.bpm) state.bpm = s.bpm;
+    state.upbeat = q.up !== undefined ? state.upbeat : (s.upbeat || 0);
+    setSource(s.s, null, true);
+    return true;
+  }
+  if (q.v) { setSource(q.v, 'valves'); return true; }
+  if (q.s) { setSource(q.s); return true; }
+  return false;
+}
+function buildUrl() {
+  const p = [];
+  // Tegn som er trygge i en query og gjør lenka lesbar, holdes ukodet
+  const add = (k, v) => p.push(k + '=' + encodeURIComponent(v)
+    .replace(/%20/g, '+').replace(/%3A/g, ':').replace(/%7C/g, '|')
+    .replace(/%2C/g, ',').replace(/%2F/g, '/'));
+  if (state.songId) add('id', state.songId);
+  else add('s', state.sourceText);
+  if (state.title && (!state.songId || state.title !== (SONG_BY_ID[state.songId].title[state.lang] || ''))) add('t', state.title);
+  add('i', state.instrId);
+  add('l', state.lang);
+  if (state.ts !== '4/4') add('ts', state.ts);
+  if (state.upbeat) add('up', state.upbeat);
+  if (state.bpm !== DEFAULTS.bpm) add('bpm', state.bpm);
+  if (state.pitchMode !== 'written') add('p', 'c');
+  if (state.transpose) add('k', state.transpose);
+  if (state.auto !== DEFAULTS.auto) add('auto', state.auto ? 1 : 0);
+  if (state.metronome !== DEFAULTS.metronome) add('met', state.metronome ? 1 : 0);
+  if (state.tone !== DEFAULTS.tone) add('tone', state.tone ? 1 : 0);
+  if (state.words) add('w', state.words.join('|'));
+  return location.origin + location.pathname + '?' + p.join('&');
+}
+function syncUrl() {
+  try { history.replaceState(null, '', buildUrl()); } catch (e) { /* ignorer */ }
+}
+
+/* ---------------- Avspilling ---------------- */
+function stopIfPlaying() { if (player.playing) { stopPlayback(); updatePlayBtn(); } }
+function updatePlayBtn() {
+  const b = $('playBtn');
+  b.textContent = player.playing ? '⏸' : '▶';
+  b.classList.toggle('on', player.playing);
+  b.setAttribute('aria-label', T(player.playing ? 'ui.pause' : 'ui.play'));
+}
+function playPause() {
+  if (player.playing) { stopPlayback(); updatePlayBtn(); return; }
+  if (!state.events.length) return;
+  const ins = curInstr();
+  player.onNote = i => { go(i); flash(i); };
+  player.onStop = () => { updatePlayBtn(); };
+  const from = state.cur >= state.events.length - 1 ? 0 : state.cur;
+  const sounding = state.events.map(e => Object.assign({}, e, { midi: e.rest ? null : soundingMidi(e) }));
+  const ok = startPlayback(sounding, {
+    bpm: state.bpm, ts: state.ts, upbeat: state.upbeat, from,
+    metronome: state.metronome, tone: state.tone, countIn: state.countIn,
+    transpose: 0, group: ins.group,
+  });
+  if (ok) updatePlayBtn();
+}
+let flashTimer = null;
+function flash(i) {
+  cards.forEach(c => c.classList.remove('beat'));
+  const el = cards[i];
+  if (!el) return;
+  el.classList.add('beat');
+  clearTimeout(flashTimer);
+  flashTimer = setTimeout(() => el.classList.remove('beat'), 140);
+}
+
+/* ---------------- Oppstart ---------------- */
+function init() {
+  Object.assign(state, DEFAULTS);
+  const nav = langFromNavigator(navigator.language || (navigator.languages || [])[0]);
+  if (nav) state.lang = nav;
+  const saved = readCookie();
+  PERSIST.forEach(k => { if (saved[k] !== undefined) state[k] = saved[k]; });
+  const q = query();
+  const loaded = applyQuery(q);
+  if (!loaded) loadSong('lisa');
+  saveState();
+
+  $('prev').addEventListener('click', () => { stopIfPlaying(); go(state.cur - 1); });
+  $('next').addEventListener('click', () => { stopIfPlaying(); go(state.cur + 1); });
+  $('playBtn').addEventListener('click', playPause);
+  $('openSettings').addEventListener('click', () => { renderSettings(); openSheet('settings'); });
+  $('openSongs').addEventListener('click', () => { renderSongs(); openSheet('songs'); });
+  $('openShare').addEventListener('click', () => { renderShare(); openSheet('share'); });
+  document.querySelectorAll('[data-close]').forEach(b =>
+    b.addEventListener('click', () => closeSheet(b.dataset.close)));
+  document.querySelectorAll('.sheet').forEach(s =>
+    s.addEventListener('click', e => { if (e.target === s) s.hidden = true; }));
+
+  $('pclose').addEventListener('click', () => { $('printview').hidden = true; });
+  $('doPrint').addEventListener('click', () => window.print());
+  $('rowM').addEventListener('click', () => { pRows = Math.max(3, pRows - 1); renderPrint(); });
+  $('rowP').addEventListener('click', () => { pRows = Math.min(40, pRows + 1); renderPrint(); });
+  $('zM').addEventListener('click', () => { pZoom = Math.max(0.3, +(pZoom - 0.1).toFixed(2)); renderPrint(); });
+  $('zP').addEventListener('click', () => { pZoom = Math.min(1.6, +(pZoom + 0.1).toFixed(2)); renderPrint(); });
+  $('orient').addEventListener('click', () => { pLand = !pLand; renderPrint(); });
+
+  document.addEventListener('keydown', e => {
+    const openSheetEl = document.querySelector('.sheet:not([hidden])');
+    if (e.key === 'Escape') {
+      if (openSheetEl) { openSheetEl.hidden = true; return; }
+      if (!$('printview').hidden) { $('printview').hidden = true; return; }
+    }
+    if (openSheetEl || !$('printview').hidden) return;
+    if (/^(INPUT|TEXTAREA|SELECT)$/.test((e.target && e.target.tagName) || '')) return;
+    if (e.key === 'ArrowRight') { e.preventDefault(); stopIfPlaying(); go(state.cur + 1); }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); stopIfPlaying(); go(state.cur - 1); }
+    else if (e.key === ' ') { e.preventDefault(); playPause(); }
+  });
+  window.addEventListener('resize', () => centerCard(cards[state.cur], true));
+
+  rebuildAll();
+  updatePlayBtn();
+  go(state.cur, true);
+  if (state.auto) setTimeout(playPause, 350);
+  window.__app = { state, go, setSource, loadSong, setInstrument, buildUrl, rebuildAll };
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+else init();
+
+</script>
+</body>
+</html>
