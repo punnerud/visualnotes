@@ -301,7 +301,7 @@ function renderSettings() {
       { value: 'written', label: T('ui.writtenPitch') }, { value: 'concert', label: T('ui.concertPitch') },
     ], state.pitchMode, v => { state.pitchMode = v; saveState(); rebuildAll(); renderSettings(); syncUrl(); }));
   }
-  b.appendChild(rangeRow('ui.tempo', 40, 208, 1, state.bpm, v => v + ' BPM', v => { state.bpm = v; updateHeader(); saveState(); syncUrl(); }));
+  b.appendChild(rangeRow('ui.tempo', BPM_MIN, BPM_MAX, 1, state.bpm, v => v + ' BPM', applyTempo));
   b.appendChild(switchRow('ui.autoAdvance', 'ui.autoAdvanceSub', state.auto, v => { state.auto = v; saveState(); syncUrl(); }));
   b.appendChild(switchRow('ui.metronome', null, state.metronome, v => { state.metronome = v; saveState(); syncUrl(); }));
   b.appendChild(switchRow('ui.toneSound', null, state.tone, v => { state.tone = v; saveState(); syncUrl(); }));
@@ -415,33 +415,58 @@ function renderShare() {
   b.appendChild(err);
 }
 
+/* ---------------- Tempolinje ---------------- */
+const BPM_MIN = 30, BPM_MAX = 240, BPM_STEP = 4;
+function updateTempoBar() {
+  const v = $('bpmVal');
+  const def = state.bpmDefault;
+  v.innerHTML = `<b>${state.bpm}</b><span>BPM</span>` +
+    (def && def !== state.bpm ? `<em>↺ ${T('ui.tempoDefault', { n: def })}</em>` : '');
+  v.title = def ? T('ui.tempoDefault', { n: def }) : '';
+  v.setAttribute('aria-label', T('ui.tempo') + ': ' + state.bpm + ' BPM');
+  $('bpmM').disabled = state.bpm <= BPM_MIN;
+  $('bpmP').disabled = state.bpm >= BPM_MAX;
+  $('bpmM').setAttribute('aria-label', T('ui.slower'));
+  $('bpmP').setAttribute('aria-label', T('ui.faster'));
+}
+/* Nytt tempo: fortsetter fra tonen man står på hvis det spilles nå. */
+function applyTempo(bpm) {
+  state.bpm = clamp(Math.round(bpm), BPM_MIN, BPM_MAX);
+  updateTempoBar(); updateHeader(); saveState(); syncUrl();
+  if (player.playing) beginPlayback(state.cur, 0);
+}
+
 /* ---------------- Utskrift ---------------- */
-let pRows = 11, pZoom = 0.6, pLand = false;
 function openPrint() { $('printview').hidden = false; renderPrint(); }
 function renderPrint() {
   const ins = curInstr();
   $('ptitle').textContent = '♪ ' + (state.title || T('ui.untitled'));
   $('psub').textContent = [instrName(ins.id), T('clefs.' + ins.clef), state.ts, state.bpm + ' BPM'].join(' · ');
-  $('rowVal').textContent = pRows >= 40 ? T('ui.all') : pRows;
-  $('zVal').textContent = Math.round(pZoom * 100) + '%';
-  $('orient').textContent = pLand ? T('ui.landscape') : T('ui.portrait');
+  $('rowVal').textContent = state.pRows >= 40 ? T('ui.all') : state.pRows;
+  $('zVal').textContent = Math.round(state.pZoom * 100) + '%';
+  $('orient').textContent = state.pLand ? T('ui.landscape') : T('ui.portrait');
   $('perLineLbl').textContent = T('ui.perLine');
-  $('psheet').classList.toggle('land', pLand);
-  $('pageStyle').textContent = `@page{size:A4 ${pLand ? 'landscape' : 'portrait'};margin:10mm}`;
+  $('ptip').textContent = T('ui.printTip');
+  $('psheet').classList.toggle('land', state.pLand);
+  $('pageStyle').textContent = `@page{size:A4 ${state.pLand ? 'landscape' : 'portrait'};margin:10mm}`;
   $('plegend').textContent = T('ui.printLegend');
   const g = $('pgrid');
   g.innerHTML = '';
-  g.style.zoom = pZoom;
+  g.style.zoom = state.pZoom;
+  // Én blokk per linje: da kan ikke en side deles midt i en rad med toner
+  let row = document.createElement('div');
+  row.className = 'prow';
   let n = 0;
   state.events.forEach((e, i) => {
     if (e.bar && state.showBars && n > 0) {
-      const b = document.createElement('div'); b.className = 'barline'; g.appendChild(b);
+      const b = document.createElement('div'); b.className = 'barline'; row.appendChild(b);
     }
-    g.appendChild(makeCard(e, i, { print: true }));
+    row.appendChild(makeCard(e, i, { print: true }));
     n++;
-    if (n % pRows === 0 || e.phrase === 2) {
-      const br = document.createElement('div'); br.className = 'pbreak'; g.appendChild(br);
-      if (e.phrase === 2) n = 0;
+    if (n >= state.pRows || e.phrase === 2) {
+      g.appendChild(row);
+      row = document.createElement('div'); row.className = 'prow'; n = 0;
     }
   });
+  if (row.children.length) g.appendChild(row);
 }

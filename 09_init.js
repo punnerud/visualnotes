@@ -6,12 +6,14 @@ const DEFAULTS = {
   lang: 'no', instrId: 'tromp_bb', naming: 'native', pitchMode: 'written', recorderGerman: false,
   bpm: 100, ts: '4/4', upbeat: 0, auto: false, metronome: true, tone: true, countIn: 4,
   air: 0.6, showFing: true, showBars: true, showOct: true, transpose: 0,
+  pRows: 11, pZoom: 0.8, pLand: true,
 };
 const PERSIST = ['lang', 'instrId', 'naming', 'pitchMode', 'recorderGerman', 'bpm', 'auto',
-                 'metronome', 'tone', 'countIn', 'air', 'showFing', 'showBars', 'showOct'];
+                 'metronome', 'tone', 'countIn', 'air', 'showFing', 'showBars', 'showOct',
+                 'pRows', 'pZoom', 'pLand'];
 const state = Object.assign({}, DEFAULTS, {
   title: '', songId: null, sourceText: '', events: [], cur: 0, words: null, parseErrors: [],
-  transposeLocked: false,
+  transposeLocked: false, bpmDefault: 100,
 });
 
 function readCookie() {
@@ -80,7 +82,8 @@ function loadSong(id) {
   if (!s) return;
   state.songId = id;
   state.title = s.title[state.lang] || s.title.en;
-  state.ts = s.ts; state.bpm = s.bpm; state.upbeat = s.upbeat || 0; state.words = null;
+  state.ts = s.ts; state.bpm = s.bpm; state.bpmDefault = s.bpm;
+  state.upbeat = s.upbeat || 0; state.words = null;
   state.transposeLocked = false;
   setSource(s.s, null, true);
   go(0, true);
@@ -92,6 +95,7 @@ function rebuildAll() {
   state.events = markBars(state.events, state.ts, state.upbeat);
   renderStrip();
   renderLegend();
+  updateTempoBar();
   go(state.cur, true);
 }
 
@@ -109,7 +113,7 @@ function applyQuery(q) {
   if (q.i && INSTR_BY_ID[q.i]) state.instrId = q.i;
   if (q.ts && /^\d+\/\d+$/.test(q.ts)) state.ts = q.ts;
   if (q.up !== undefined) state.upbeat = Math.max(0, parseFloat(q.up) || 0);
-  if (q.bpm) state.bpm = clamp(parseInt(q.bpm, 10) || DEFAULTS.bpm, 30, 240);
+  if (q.bpm) { state.bpm = clamp(parseInt(q.bpm, 10) || DEFAULTS.bpm, 30, 240); state.bpmDefault = state.bpm; }
   if (q.p === 'c' || q.p === 'concert') state.pitchMode = 'concert';
   if (q.p === 'w' || q.p === 'written') state.pitchMode = 'written';
   if (q.k) { state.transpose = clamp(parseInt(q.k, 10) || 0, -24, 24); state.transposeLocked = true; }
@@ -132,7 +136,7 @@ function applyQuery(q) {
     state.songId = q.id;
     if (!q.t) state.title = s.title[state.lang] || s.title.en;
     if (!q.ts) state.ts = s.ts;
-    if (!q.bpm) state.bpm = s.bpm;
+    if (!q.bpm) { state.bpm = s.bpm; state.bpmDefault = s.bpm; }
     state.upbeat = q.up !== undefined ? state.upbeat : (s.upbeat || 0);
     setSource(s.s, null, true);
     return true;
@@ -175,20 +179,25 @@ function updatePlayBtn() {
   b.classList.toggle('on', player.playing);
   b.setAttribute('aria-label', T(player.playing ? 'ui.pause' : 'ui.play'));
 }
-function playPause() {
-  if (player.playing) { stopPlayback(); updatePlayBtn(); return; }
-  if (!state.events.length) return;
+function beginPlayback(from, countIn) {
+  if (!state.events.length) return false;
   const ins = curInstr();
   player.onNote = i => { go(i); flash(i); };
   player.onStop = () => { updatePlayBtn(); };
-  go(0, true);                       // ▶ spiller alltid sangen fra begynnelsen
   const sounding = state.events.map(e => Object.assign({}, e, { midi: e.rest ? null : soundingMidi(e) }));
   const ok = startPlayback(sounding, {
-    bpm: state.bpm, ts: state.ts, upbeat: state.upbeat, from: 0,
-    metronome: state.metronome, tone: state.tone, countIn: state.countIn,
+    bpm: state.bpm, ts: state.ts, upbeat: state.upbeat, from: from || 0,
+    metronome: state.metronome, tone: state.tone,
+    countIn: countIn === undefined ? state.countIn : countIn,
     transpose: 0, group: ins.group,
   });
-  if (ok) updatePlayBtn();
+  updatePlayBtn();
+  return ok;
+}
+function playPause() {
+  if (player.playing) { stopPlayback(); updatePlayBtn(); return; }
+  go(0, true);                       // ▶ spiller alltid sangen fra begynnelsen
+  beginPlayback(0);
 }
 let flashTimer = null;
 function flash(i) {
@@ -236,6 +245,9 @@ function init() {
   $('prev').addEventListener('click', () => { stopIfPlaying(); go(state.cur - 1); });
   $('next').addEventListener('click', () => { stopIfPlaying(); go(state.cur + 1); });
   $('playBtn').addEventListener('click', playPause);
+  $('bpmM').addEventListener('click', () => applyTempo(state.bpm - BPM_STEP));
+  $('bpmP').addEventListener('click', () => applyTempo(state.bpm + BPM_STEP));
+  $('bpmVal').addEventListener('click', () => applyTempo(state.bpmDefault));
   $('openSettings').addEventListener('click', () => { renderSettings(); openSheet('settings'); });
   $('openSongs').addEventListener('click', () => { renderSongs(); openSheet('songs'); });
   $('openShare').addEventListener('click', () => { renderShare(); openSheet('share'); });
@@ -246,11 +258,12 @@ function init() {
 
   $('pclose').addEventListener('click', () => { $('printview').hidden = true; });
   $('doPrint').addEventListener('click', () => window.print());
-  $('rowM').addEventListener('click', () => { pRows = Math.max(3, pRows - 1); renderPrint(); });
-  $('rowP').addEventListener('click', () => { pRows = Math.min(40, pRows + 1); renderPrint(); });
-  $('zM').addEventListener('click', () => { pZoom = Math.max(0.3, +(pZoom - 0.1).toFixed(2)); renderPrint(); });
-  $('zP').addEventListener('click', () => { pZoom = Math.min(1.6, +(pZoom + 0.1).toFixed(2)); renderPrint(); });
-  $('orient').addEventListener('click', () => { pLand = !pLand; renderPrint(); });
+  const printSet = (k, v) => { state[k] = v; saveState(); renderPrint(); };
+  $('rowM').addEventListener('click', () => printSet('pRows', Math.max(3, state.pRows - 1)));
+  $('rowP').addEventListener('click', () => printSet('pRows', Math.min(40, state.pRows + 1)));
+  $('zM').addEventListener('click', () => printSet('pZoom', Math.max(0.3, +(state.pZoom - 0.1).toFixed(2))));
+  $('zP').addEventListener('click', () => printSet('pZoom', Math.min(1.6, +(state.pZoom + 0.1).toFixed(2))));
+  $('orient').addEventListener('click', () => printSet('pLand', !state.pLand));
 
   document.addEventListener('keydown', e => {
     const openSheetEl = document.querySelector('.sheet:not([hidden])');
@@ -268,6 +281,7 @@ function init() {
   setupStripDrag($('strip'));
 
   rebuildAll();
+  updateTempoBar();
   updatePlayBtn();
   go(state.cur, true);
   if (state.auto) armAutoStart();

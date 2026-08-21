@@ -23,8 +23,16 @@ URL, so an LLM can generate a link. Four languages, no build step in the browser
 | [`?v=0 13 12 1 0`](https://punnerud.github.io/visualnotes/?v=0+13+12+1+0) | Ventiltall i stedet for tonenavn |
 | [`?id=glede&i=altsax&l=sv`](https://punnerud.github.io/visualnotes/?id=glede&i=altsax&l=sv) | Altsaksofon, svensk |
 
-Innstillinger (⚙) husker språk, instrument og lyd i en cookie i ett år. Alt du endrer speiles i URL-en,
-så lenken i adressefeltet er alltid den du kan dele.
+Innstillinger (⚙) husker språk, instrument, lyd og utskriftsvalg i en cookie i ett år. Alt du endrer
+speiles i URL-en, så lenken i adressefeltet er alltid den du kan dele.
+
+**Tempo** justeres rett over avspillingsknappen. Trykk på tallet for å gå tilbake til melodiens eget
+tempo — endrer du tempo mens den spiller, fortsetter den i det nye tempoet fra tonen du står på.
+▶ spiller alltid fra første tone. Tonerekka kan dras sidelengs med musa, og hjulet blar vannrett.
+
+**Utskrift** (🖨) viser arket i faktisk størrelse med de samme margene som skrives ut, så
+forhåndsvisningen er det du får. Standard er liggende A4 på 80 %. En linje med toner deles aldri over
+et sideskift. Velg «Standard» marger i utskriftsdialogen og slå av topp- og bunntekst.
 
 ---
 
