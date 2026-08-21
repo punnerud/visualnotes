@@ -386,6 +386,7 @@ function renderSettings() {
     const btn = document.createElement('button');
     btn.textContent = d === 0 ? '0' : (d > 0 ? '+' + d : String(d));
     btn.addEventListener('click', () => {
+      stopIfPlaying();
       state.transpose = d === 0 ? 0 : clamp(state.transpose + d, -24, 24);
       state.transposeLocked = d !== 0;
       if (d === 0) autoOctave();

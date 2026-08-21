@@ -56,16 +56,16 @@ function pluckTone(ac, freq, t0, dur, dest) {
   o.start(t0); o2.start(t0);
   o.stop(t0 + dur + 0.5); o2.stop(t0 + dur + 0.5);
 }
-function playTone(midi, dur, when, group) {
+function playTone(midi, dur, when, group, dest) {
   const ac = ensureAC(); if (!ac) return;
   const t0 = when === undefined ? ac.currentTime + 0.01 : when;
   const f = midiFreq(midi);
   const d = Math.max(0.12, Math.min(dur || 0.5, 4));
-  if (group === 'brass') brassTone(ac, f, t0, d);
-  else if (group === 'woodwind' || group === 'strings') reedTone(ac, f, t0, d);
-  else pluckTone(ac, f, t0, d);
+  if (group === 'brass') brassTone(ac, f, t0, d, dest);
+  else if (group === 'woodwind' || group === 'strings') reedTone(ac, f, t0, d, dest);
+  else pluckTone(ac, f, t0, d, dest);
 }
-function click(when, accent) {
+function click(when, accent, dest) {
   const ac = ensureAC(); if (!ac) return;
   const t0 = when === undefined ? ac.currentTime + 0.01 : when;
   const o = ac.createOscillator(), g = ac.createGain();
@@ -74,14 +74,14 @@ function click(when, accent) {
   g.gain.setValueAtTime(0.0001, t0);
   g.gain.exponentialRampToValueAtTime(accent ? 0.28 : 0.16, t0 + 0.002);
   g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.055);
-  o.connect(g); g.connect(ac.destination);
+  o.connect(g); g.connect(dest || ac.destination);
   o.start(t0); o.stop(t0 + 0.07);
 }
 
 /* ---------------- Planlegger ---------------- */
 const player = {
   playing: false, timer: null, notes: [], clicks: [], ni: 0, ci: 0,
-  onNote: null, onStop: null, t0: 0, endTime: 0,
+  onNote: null, onStop: null, t0: 0, endTime: 0, bus: null, gen: 0,
 };
 function buildSchedule(events, opts) {
   const o = opts, spb = 60 / o.bpm;
@@ -105,6 +105,9 @@ function buildSchedule(events, opts) {
 function startPlayback(events, opts) {
   const ac = ensureAC(); if (!ac) return false;
   stopPlayback();
+  player.bus = ac.createGain();
+  player.bus.gain.value = 1;
+  player.bus.connect(ac.destination);
   const from = opts.from || 0;
   const sc = buildSchedule(events.slice(from), opts);
   const lead = 0.12 + (opts.countIn ? opts.countIn * sc.unit : 0);
@@ -126,13 +129,16 @@ function tick(ac) {
   const now = ac.currentTime, horizon = now + 0.15, o = player.opts;
   while (player.ci < player.clicks.length && player.t0 + player.clicks[player.ci].t < horizon) {
     const c = player.clicks[player.ci++];
-    click(player.t0 + c.t, c.accent);
+    click(player.t0 + c.t, c.accent, player.bus);
   }
   while (player.ni < player.notes.length && player.t0 + player.notes[player.ni].t < horizon) {
     const n = player.notes[player.ni++];
-    if (o.tone && !n.rest) playTone(n.midi + (o.transpose || 0), n.dur * 0.92, player.t0 + n.t, o.group);
+    if (o.tone && !n.rest) playTone(n.midi + (o.transpose || 0), n.dur * 0.92, player.t0 + n.t, o.group, player.bus);
     const delay = Math.max(0, (player.t0 + n.t - now) * 1000);
-    setTimeout(() => { if (player.playing && player.onNote) player.onNote(n.i); }, delay);
+    const gen = player.gen;
+    setTimeout(() => {
+      if (player.playing && player.gen === gen && player.onNote) player.onNote(n.i);
+    }, delay);
   }
   if (now > player.endTime + 0.05) {
     const cb = player.onStop; stopPlayback(); if (cb) cb();
@@ -140,6 +146,17 @@ function tick(ac) {
 }
 function stopPlayback() {
   player.playing = false;
+  player.gen++;                       // gjør at planlagte tilbakekall fra forrige runde ryker
   if (player.timer) clearInterval(player.timer);
   player.timer = null;
+  const bus = player.bus;
+  player.bus = null;
+  if (!bus) return;
+  // Toner og klikk kan allerede være planlagt noen hundredeler fram i tid,
+  // og en lang tone kan klinge i flere sekunder. Demp bussen og koble den fra.
+  try {
+    bus.gain.cancelScheduledValues(AC.currentTime);
+    bus.gain.setTargetAtTime(0.0001, AC.currentTime, 0.012);
+  } catch (e) { /* ignorer */ }
+  setTimeout(() => { try { bus.disconnect(); } catch (e) { /* ignorer */ } }, 150);
 }

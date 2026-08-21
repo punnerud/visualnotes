@@ -31,6 +31,7 @@ function saveState() {
 }
 function setInstrument(id) {
   if (!INSTR_BY_ID[id]) return;
+  stopIfPlaying();                    // gammelt instrument ligger i planleggeren
   state.instrId = id;
   autoOctave();
   saveState(); rebuildAll(); syncUrl();
@@ -60,6 +61,7 @@ function autoOctave() {
   state.transpose = best * 12;
 }
 function setSource(text, kind, keepSong) {
+  stopIfPlaying();                    // ellers spiller den forrige melodien videre
   if (!keepSong) state.songId = null;
   state.sourceText = String(text || '').trim();
   let r;
