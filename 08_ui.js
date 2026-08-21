@@ -105,18 +105,14 @@ function renderStrip() {
     band.style.top = '';
     strip.parentNode.insertBefore(band, strip.nextSibling);
   }
-  const ppb = ppbV();
+  const vh = cardH();
   state.events.forEach((e, i) => {
     if (!vert && e.bar && state.showBars) {
       const b = document.createElement('div'); b.className = 'barline'; strip.appendChild(b);
     }
     const el = makeCard(e, i, { vert });
     if (vert) {
-      // Høyden er nøyaktig proporsjonal med varigheten — ingen marger som forskyver tida
-      const h = e.beats * ppb;
-      el.style.setProperty('--h', h.toFixed(2) + 'px');
-      if (h < 60) el.classList.add('short');
-      if (h < 34) el.classList.add('tiny');
+      el.style.setProperty('--h', vh.toFixed(2) + 'px');
       if (e.bar && state.showBars) el.classList.add('barstart');
       if (e.phrase) el.classList.add('phrasestart');
     } else {
@@ -163,7 +159,9 @@ function go(i, instant) {
 const V_PLAYHEAD = 0.62;              // landingslinja, andel ned i vinduet
 const S_HEAD = 13;                    // notehodets avstand fra segmentets venstrekant
 let vY = 0, sSegs = [], beatStart = [], beatTotal = 0;
-function ppbV() { return 60 + state.air * 50; }
+/* Alle kortene er like høye. Varigheten leses av notebåndet under, og like
+   høye kort gjør at man ser flere av de kommende grepene. */
+function cardH() { return 86 + state.air * 24; }
 function ppbS() { return 56 + state.air * 40; }
 
 /* Notebåndet: én sammenhengende notelinje der bredden følger varigheten.
@@ -218,13 +216,20 @@ function glideBand(from, leadSecs) {
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   sLaneStyle(`transform ${secs.toFixed(3)}s linear ${Math.max(0, leadSecs || 0).toFixed(3)}s`, sOffset(beatTotal));
 }
-function vOffset(beatPos) {
+function vOffset(idx) {
   const h = $('strip').clientHeight || 1;
-  return h * V_PLAYHEAD - h + beatPos * ppbV();
+  return h * V_PLAYHEAD - h + idx * cardH();
 }
-function beatAtOffset(y) {
+function indexAtOffset(y) {
   const h = $('strip').clientHeight || 1;
-  return (y - h * V_PLAYHEAD + h) / ppbV();
+  return (y - h * V_PLAYHEAD + h) / cardH();
+}
+/* Kortene ligger på indeks, båndet på taktslag — her er broen mellom dem */
+function beatAtIndexF(f) {
+  const i = Math.floor(f);
+  if (i < 0) return 0;
+  if (i >= state.events.length) return beatTotal;
+  return beatStart[i] + (f - i) * state.events[i].beats;
 }
 function vLaneStyle(transition, y) {
   const lane = $('vlane');
@@ -234,9 +239,9 @@ function vLaneStyle(transition, y) {
   lane.style.transform = 'translateY(' + y.toFixed(1) + 'px)';
 }
 /* Begge banene deler tidsakse: tangentene faller, notene glir sidelengs */
-function setLanes(beatPos, transition) {
-  vLaneStyle(transition, vOffset(beatPos));
-  sLaneStyle(transition, sOffset(beatPos));
+function setLanes(idxF, transition) {
+  vLaneStyle(transition, vOffset(idxF));
+  sLaneStyle(transition, sOffset(beatAtIndexF(idxF)));
 }
 /* Tangentene hopper én tone om gangen, mens notebåndet glir uavbrutt.
    Under avspilling får derfor bare den fallende banen ny posisjon her —
@@ -245,7 +250,7 @@ function setLanes(beatPos, transition) {
 function positionStripLane(instant) {
   if (!$('vlane')) return;
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  vLaneStyle((instant || reduce) ? 'none' : 'transform .18s ease-out', vOffset(beatStart[state.cur] || 0));
+  vLaneStyle((instant || reduce) ? 'none' : 'transform .18s ease-out', vOffset(state.cur));
 }
 function freezeOne(id) {
   const lane = $(id);
@@ -264,11 +269,8 @@ function freezeLanes() {
 }
 /* Etter dra eller hjul: hopp til tonen banen står på */
 function snapStripLane() {
-  if (!$('vlane') || !beatStart.length) return;
-  const b = beatAtOffset(vY);
-  let idx = 0;
-  for (let i = 0; i < beatStart.length; i++) if (beatStart[i] <= b + 1e-6) idx = i;
-  go(clamp(idx, 0, state.events.length - 1));
+  if (!$('vlane') || !state.events.length) return;
+  go(clamp(Math.round(indexAtOffset(vY)), 0, state.events.length - 1));
 }
 
 /* Tidslinje: én bit per tone der bredden er proporsjonal med varigheten.
@@ -335,7 +337,7 @@ function setupStripDrag(el) {
       if (vertical) stopIfPlaying();
       try { el.setPointerCapture(pid); } catch (err) { /* ignorer */ }
     }
-    if (vertical) setLanes(beatAtOffset(base + d), 'none');
+    if (vertical) setLanes(indexAtOffset(base + d), 'none');
     else el.scrollLeft = base - d;
     e.preventDefault();
   });
@@ -361,7 +363,7 @@ function setupStripDrag(el) {
   el.addEventListener('wheel', e => {
     if (curDir() === 'v') {
       stopIfPlaying();
-      setLanes(beatAtOffset(vY + e.deltaY), 'none');
+      setLanes(indexAtOffset(vY + e.deltaY), 'none');
       clearTimeout(snapTimer);
       snapTimer = setTimeout(snapStripLane, 140);
       e.preventDefault();

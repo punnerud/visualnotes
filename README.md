@@ -43,9 +43,9 @@ Instrumenter med grepdiagram på høykant — trompet, blokkfløyte, saksofon, f
 viser grepene på rekke som glir sidelengs, med notebåndet under.
 
 For **piano, klokkespill, xylofon og trombone** ligger diagrammet på tvers. Da faller grepene i stedet
-nedover som i Guitar Hero — kommende toner ligger over, høyden på hver blokk er proporsjonal med
-varigheten, og spilte toner glir bak båndet og ut nederst — mens notebåndet krysser tvers over ved
-landingslinja. Krysset midt i bildet er tonen som spilles nå: den står samtidig på landingslinja over
+nedover som i Guitar Hero — kommende toner ligger over, og spilte toner glir bak båndet og ut nederst —
+mens notebåndet krysser tvers over ved landingslinja. Alle kortene er like høye, så du ser like mange
+kommende grep uansett rytme; hvor lenge tonen varer leser du av båndet. Krysset midt i bildet er tonen som spilles nå: den står samtidig på landingslinja over
 og med notehodet på spillehodet i båndet.
 
 I begge tilfeller er det samme notebånd, og notene leses vannrett slik de skal.
