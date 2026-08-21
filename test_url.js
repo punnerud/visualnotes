@@ -118,4 +118,20 @@ ok(short.length < verbose.length * 0.55,
    `for lite innkorting: ${short.length} mot ${verbose.replace(/ /g, '+').length}`);
 console.log(`  ordrik lenke: ${verbose.replace(/ /g, '+').length} → ${short.length} tegn`);
 
+
+/* --- går taktene opp? --- */
+const bars = (s, ts, up) => c.barCount(c.parseSong(s).events, ts, up || 0);
+eq(bars('C4,D,E,F', '4/4'), 1, 'fire firedeler er én takt i 4/4');
+eq(bars('C4:h2', '2/4'), 2, 'to halvnoter er to takter i 2/4');
+eq(bars('C4,D,E', '3/4'), 1, '3/4');
+eq(bars('C4:q.,D:q.', '6/8'), 1, '6/8 med punkterte firedeler');
+eq(c.barsOff(c.parseSong('C4,D,E,F').events, '4/4', 0), 0, 'hele takter gir ingen advarsel');
+eq(c.barsOff(c.parseSong('C4,D,E').events, '4/4', 0), 0.75, 'tre firedeler i 4/4 er 0,75 takt');
+// opptakten fyller resten av første takt
+eq(bars('G4/C5,D,E,F', '4/4', 1), 2, 'opptakt på ett slag');
+eq(c.barsOff(c.parseSong('G4/C5,D,E,F').events, '4/4', 1), 0, 'opptakt gir ingen advarsel');
+// feilen fra transkripsjonen: :h16 er seksten halvnoter, ikke en pause på 16 slag
+eq(c.parseSong('-:h16').events.reduce((a, e) => a + e.beats, 0), 32, ':h16 er 32 slag');
+eq(c.parseSong('-:16').events.reduce((a, e) => a + e.beats, 0), 16, '-:16 er 16 slag');
+
 done('test_url');

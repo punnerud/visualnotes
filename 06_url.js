@@ -260,6 +260,20 @@ function beatUnit(ts) {
   const u = 4 / den;
   return (den === 8 && num % 3 === 0) ? u * 3 : u;   // 6/8, 9/8, 12/8 teller punkterte
 }
+/* Hvor mange takter melodien fyller. Går den ikke opp i hele takter, mangler
+   eller er det for mye et sted. Opptakten teller som den delen av første takt. */
+function barCount(events, ts, upbeat) {
+  const per = barBeats(ts);
+  const total = events.reduce((a, e) => a + e.beats, 0);
+  const fill = upbeat ? per - upbeat : 0;
+  return (total + fill) / per;
+}
+function barsOff(events, ts, upbeat) {
+  if (!events.length) return 0;
+  const n = barCount(events, ts, upbeat);
+  return Math.abs(n - Math.round(n)) < 1e-6 ? 0 : n;
+}
+
 /* Markerer taktstart på hendelsene */
 function markBars(events, ts, upbeat) {
   const per = barBeats(ts);

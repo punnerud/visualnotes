@@ -108,6 +108,7 @@
   "autoAdvance": "Auto-advance",
   "autoAdvanceSub": "Starts playback when the page opens",
   "baroque": "Baroque",
+  "barsOff": "The bars do not add up: {beats} beats make {bars} bars in {ts}",
   "calibStart": "Start",
   "calibStop": "Stop",
   "calibrate": "Calibrate",

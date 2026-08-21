@@ -116,6 +116,10 @@ A:e4                                       gjenta: tallet henger rett på lengde
 C~,C                                       bindebue: slås sammen til én lengre tone
 ```
 
+Appen sier fra rett under notene hvis notelengdene ikke går opp i hele takter — «Taktene går ikke opp:
+39 slag blir 19,5 takter i 2/4». Det fanger den vanligste feilen i en maskinskrevet melodi, som at
+`-:h16` er seksten halvnotepauser (32 slag) og ikke én pause på 16 slag (`-:16`).
+
 Alt appen selv skriver bruker bare **bokstaver, tall og `, : . - /`** — tegn som ikke trenger
 prosentkoding i en URL. Det holder lenken kort og lesbar. `#`, `|` og `*` godtas fortsatt når du
 skriver selv, men `#` og `|` blir til `%23` og `%7C` i en lenke, som gjør den lengre og styggere.
@@ -163,6 +167,8 @@ Vil du skrive den selv:
 > med tallet rett etter lengden: `A:e4` er fire åttedeler, `A:q4` fire firedeler — bruk aldri `*`.
 > `/` er frasemellomrom — ikke sett ett ved hver takt, `ts=` gir taktstrekene selv. Bruk bare
 > bokstaver, tall og `, : . - /` så lenken tåler å limes inn andre steder.
+> Legg sammen notelengdene takt for takt før du svarer, og rett melodien hvis det ikke går opp i
+> hele takter.
 > Sett også `t=` (tittel), `ts=` (taktart) og `bpm=`. Tonene skal være det spilleren leser.
 > Svar med bare URL-en.
 

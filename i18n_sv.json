@@ -108,6 +108,7 @@
   "autoAdvance": "Automatiskt byte",
   "autoAdvanceSub": "Startar uppspelning när sidan öppnas",
   "baroque": "Barock",
+  "barsOff": "Takterna går inte jämnt ut: {beats} slag blir {bars} takter i {ts}",
   "calibStart": "Slå på",
   "calibStop": "Slå av",
   "calibrate": "Ställ in",

@@ -124,9 +124,18 @@ function renderStrip() {
     cards.push(el);
   });
   renderStaffBand();
+  const msgs = [];
+  if (outCount) msgs.push(T('ui.outOfRange', { n: outCount, instr: instrName(ins.id) }));
+  const off = barsOff(state.events, state.ts, state.upbeat);
+  if (off) {
+    msgs.push(T('ui.barsOff', {
+      beats: +state.events.reduce((a, e) => a + e.beats, 0).toFixed(3),
+      bars: +off.toFixed(2), ts: state.ts,
+    }));
+  }
   const warn = $('warn');
-  if (outCount) { warn.hidden = false; warn.textContent = T('ui.outOfRange', { n: outCount, instr: instrName(ins.id) }); }
-  else warn.hidden = true;
+  warn.hidden = !msgs.length;
+  warn.textContent = msgs.join(' · ');
   updateHeader();
 }
 function centerCard(el, instant) {
@@ -827,6 +836,12 @@ s=    the melody, comma separated: C4,D,E,F,G
       Phrase    /   a small gap between phrases;  // also breaks the line when printing.
                 Do NOT put one at every bar line: bar lines come from ts= by themselves.
       Tie       C~,C  joins two notes of the same pitch into one longer note
+
+      Check the arithmetic before you answer: add the note lengths up bar by bar. A bar holds
+      ts numerator x 4 / denominator beats — 2 beats in 2/4, 4 in 4/4, 3 in 6/8 where a dotted
+      quarter counts 1.5. Watch the repeat count: ":h16" is sixteen half notes, that is 32 beats,
+      while a single sixteen-beat rest is "-:16". If the total does not come out as whole bars,
+      fix the melody before answering — the app shows a warning when it does not.
 
       Keep the link short and use only these characters: letters, digits and , : . - /
       None of them need percent-encoding, so the link stays short and readable when pasted into

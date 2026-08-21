@@ -108,6 +108,7 @@
   "autoAdvance": "Automatisk bytte",
   "autoAdvanceSub": "Starter avspilling når siden åpnes",
   "baroque": "Barokk",
+  "barsOff": "Taktene går ikke opp: {beats} slag blir {bars} takter i {ts}",
   "calibStart": "Slå på",
   "calibStop": "Slå av",
   "calibrate": "Still inn",
