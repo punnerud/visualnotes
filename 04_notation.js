@@ -62,14 +62,22 @@ function restBody(dur, dot, cx) {
   if (dot) s += `<circle cx="${cx + 10}" cy="${mid - 4}" r="1.9" fill="${INK}"/>`;
   return s;
 }
-/* Én note (eller pause) tegnet på fem linjer. n = skrevet tone eller null. */
-function staffSVG(n, dur, dot, clefId, w) {
+/* Én note (eller pause) tegnet på fem linjer. n = skrevet tone eller null.
+   opts.cont  = notelinjene går helt ut til kantene, så nabosegmenter henger sammen
+   opts.headX = notehodets x, i stedet for midt i segmentet
+   opts.bar   = taktstrek i venstrekanten */
+function staffSVG(n, dur, dot, clefId, w, opts) {
+  const o = opts || {};
   const width = w || 70;
-  const cx = width / 2;
+  const cx = o.headX === undefined ? width / 2 : o.headX;
+  const x0 = o.cont ? 0 : 2, x1 = o.cont ? width : width - 2;
   let lines = '';
   for (let i = 0; i < 5; i++) {
     const y = STAFF.top + i * STAFF.gap;
-    lines += `<line x1="2" x2="${width - 2}" y1="${y}" y2="${y}"/>`;
+    lines += `<line x1="${x0}" x2="${x1}" y1="${y}" y2="${y}"/>`;
+  }
+  if (o.bar) {
+    lines += `<line x1="1" x2="1" y1="${STAFF.top}" y2="${STAFF_BOTTOM}" stroke-width="2"/>`;
   }
   let body = '';
   if (!n) {

@@ -92,9 +92,17 @@ function renderStrip() {
     const lane = document.createElement('div');
     lane.className = 'vlane'; lane.id = 'vlane';
     strip.appendChild(lane);
+    // Notebåndet krysser tvers over ved landingslinja: notene leses vannrett
+    const band = document.createElement('div');
+    band.className = 'sband';
+    band.style.top = (V_PLAYHEAD * 100).toFixed(1) + '%';
+    const slane = document.createElement('div');
+    slane.className = 'slane'; slane.id = 'slane';
+    band.appendChild(slane);
+    strip.appendChild(band);
     const ph = document.createElement('div');
-    ph.className = 'vplayhead';
-    ph.style.top = (V_PLAYHEAD * 100).toFixed(1) + '%';
+    ph.className = 'splayhead';
+    ph.style.top = 'calc(' + (V_PLAYHEAD * 100).toFixed(1) + '% - 14px)';
     strip.appendChild(ph);
     host = lane;
   }
@@ -120,6 +128,7 @@ function renderStrip() {
     host.appendChild(el);
     cards.push(el);
   });
+  if (vert) renderStaffBand();
   const warn = $('warn');
   if (outCount) { warn.hidden = false; warn.textContent = T('ui.outOfRange', { n: outCount, instr: instrName(ins.id) }); }
   else warn.hidden = true;
@@ -144,6 +153,7 @@ function go(i, instant) {
   $('prev').disabled = state.cur === 0;
   $('next').disabled = state.cur === state.events.length - 1;
   paintProgress();
+  sSegs.forEach((el, j) => el.classList.toggle('on', j === state.cur));
   if (curDir() === 'v') positionStripLane(instant);
   else centerCard(cards[state.cur], instant);
 }
@@ -151,9 +161,42 @@ function go(i, instant) {
 /* ---------------- Loddrett bane ----------------
    Samme teknikk som tidslinja, men på Y-aksen: banen forskyves i én lineær
    bevegelse, slik at tonene faller nedover i takt med musikken. */
-const V_PLAYHEAD = 0.72;              // landingslinja, andel ned i vinduet
-let vY = 0;
+const V_PLAYHEAD = 0.62;              // landingslinja, andel ned i vinduet
+const S_HEAD = 13;                    // notehodets avstand fra segmentets venstrekant
+let vY = 0, sSegs = [];
 function ppbV() { return 60 + state.air * 50; }
+function ppbS() { return 56 + state.air * 40; }
+
+/* Notebåndet: én sammenhengende notelinje der bredden følger varigheten.
+   Segmentene ligger inntil hverandre, så x blir nøyaktig proporsjonal med tida. */
+function renderStaffBand() {
+  const lane = $('slane');
+  if (!lane) return;
+  lane.innerHTML = '';
+  const ins = curInstr();
+  const ppb = ppbS();
+  sSegs = state.events.map((e, i) => {
+    const el = document.createElement('div');
+    el.className = 'sseg' + (e.rest ? ' rest' : '');
+    const w = e.beats * ppb;
+    el.style.width = w.toFixed(2) + 'px';
+    el.innerHTML = staffSVG(e.rest ? null : writtenOf(e), e.dur, e.dot, ins.clef, w,
+      { cont: true, headX: S_HEAD, bar: e.bar && state.showBars });
+    el.addEventListener('click', () => { stopIfPlaying(); go(i); });
+    lane.appendChild(el);
+    return el;
+  });
+}
+function sOffset(beatPos) {
+  const w = $('strip').clientWidth || 1;
+  return w / 2 - beatPos * ppbS() - S_HEAD;
+}
+function sLaneStyle(transition, x) {
+  const lane = $('slane');
+  if (!lane) return;
+  lane.style.transition = transition;
+  lane.style.transform = 'translateX(' + x.toFixed(1) + 'px)';
+}
 function vOffset(beatPos) {
   const h = $('strip').clientHeight || 1;
   return h * V_PLAYHEAD - h + beatPos * ppbV();
@@ -169,29 +212,40 @@ function vLaneStyle(transition, y) {
   lane.style.transition = transition;
   lane.style.transform = 'translateY(' + y.toFixed(1) + 'px)';
 }
+/* Begge banene deler tidsakse: tangentene faller, notene glir sidelengs */
+function setLanes(beatPos, transition) {
+  vLaneStyle(transition, vOffset(beatPos));
+  sLaneStyle(transition, sOffset(beatPos));
+}
 function positionStripLane(instant) {
   if (!$('vlane')) return;
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  vLaneStyle((instant || reduce) ? 'none' : 'transform .18s ease-out', vOffset(tlStart[state.cur] || 0));
+  setLanes(tlStart[state.cur] || 0, (instant || reduce) ? 'none' : 'transform .18s ease-out');
 }
 function glideStrip(from, leadSecs) {
   if (!$('vlane')) return;
   const startBeats = tlStart[from] || 0;
   const secs = (tlTotal - startBeats) * 60 / state.bpm;
-  vLaneStyle('none', vOffset(startBeats));
+  setLanes(startBeats, 'none');
   void $('vlane').offsetHeight;
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  vLaneStyle(`transform ${secs.toFixed(3)}s linear ${Math.max(0, leadSecs || 0).toFixed(3)}s`, vOffset(tlTotal));
+  // Like lange lineære overganger holder de to banene i takt
+  setLanes(tlTotal, `transform ${secs.toFixed(3)}s linear ${Math.max(0, leadSecs || 0).toFixed(3)}s`);
 }
-function freezeStrip() {
-  const lane = $('vlane');
-  if (!lane) return;
+function freezeOne(id) {
+  const lane = $(id);
+  if (!lane) return null;
   const m = getComputedStyle(lane).transform;
   lane.style.transition = 'none';
-  if (!m || m === 'none') return;
+  if (!m || m === 'none') return null;
   lane.style.transform = m;
   const nums = m.match(/matrix\(([^)]+)\)/);
-  if (nums) vY = parseFloat(nums[1].split(',')[5]);
+  return nums ? nums[1].split(',') : null;
+}
+function freezeStrip() {
+  const v = freezeOne('vlane');
+  if (v) vY = parseFloat(v[5]);
+  freezeOne('slane');
 }
 /* Etter dra eller hjul: hopp til tonen banen står på */
 function snapStripLane() {
@@ -327,7 +381,7 @@ function setupStripDrag(el) {
       if (vertical) stopIfPlaying();
       try { el.setPointerCapture(pid); } catch (err) { /* ignorer */ }
     }
-    if (vertical) vLaneStyle('none', base + d);
+    if (vertical) setLanes(beatAtOffset(base + d), 'none');
     else el.scrollLeft = base - d;
     e.preventDefault();
   });
@@ -353,7 +407,7 @@ function setupStripDrag(el) {
   el.addEventListener('wheel', e => {
     if (curDir() === 'v') {
       stopIfPlaying();
-      vLaneStyle('none', vY + e.deltaY);
+      setLanes(beatAtOffset(vY + e.deltaY), 'none');
       clearTimeout(snapTimer);
       snapTimer = setTimeout(snapStripLane, 140);
       e.preventDefault();
