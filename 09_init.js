@@ -181,10 +181,10 @@ function playPause() {
   const ins = curInstr();
   player.onNote = i => { go(i); flash(i); };
   player.onStop = () => { updatePlayBtn(); };
-  const from = state.cur >= state.events.length - 1 ? 0 : state.cur;
+  go(0, true);                       // ▶ spiller alltid sangen fra begynnelsen
   const sounding = state.events.map(e => Object.assign({}, e, { midi: e.rest ? null : soundingMidi(e) }));
   const ok = startPlayback(sounding, {
-    bpm: state.bpm, ts: state.ts, upbeat: state.upbeat, from,
+    bpm: state.bpm, ts: state.ts, upbeat: state.upbeat, from: 0,
     metronome: state.metronome, tone: state.tone, countIn: state.countIn,
     transpose: 0, group: ins.group,
   });
@@ -265,6 +265,7 @@ function init() {
     else if (e.key === ' ') { e.preventDefault(); playPause(); }
   });
   window.addEventListener('resize', () => centerCard(cards[state.cur], true));
+  setupStripDrag($('strip'));
 
   rebuildAll();
   updatePlayBtn();

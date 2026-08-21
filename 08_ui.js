@@ -148,6 +148,53 @@ function renderLegend() {
   $('hint').textContent = T('ui.hint');
 }
 
+/* Dra tonerekka sidelengs med musa, og bruk hjulet til å bla vannrett.
+   Berøring scroller allerede av seg selv, så vi rører bare mus og penn. */
+function setupStripDrag(el) {
+  let down = false, moved = false, pid = null, startX = 0, startLeft = 0, justDragged = false;
+  el.addEventListener('pointerdown', e => {
+    if ((e.pointerType !== 'mouse' && e.pointerType !== 'pen') || e.button !== 0) return;
+    down = true; moved = false; pid = e.pointerId;
+    startX = e.clientX; startLeft = el.scrollLeft;
+  });
+  el.addEventListener('pointermove', e => {
+    if (!down || e.pointerId !== pid) return;
+    const dx = e.clientX - startX;
+    if (!moved) {
+      if (Math.abs(dx) < 5) return;
+      moved = true;
+      el.classList.add('grabbing');
+      try { el.setPointerCapture(pid); } catch (err) { /* ignorer */ }
+    }
+    el.scrollLeft = startLeft - dx;
+    e.preventDefault();
+  });
+  const end = () => {
+    if (!down) return;
+    down = false;
+    el.classList.remove('grabbing');
+    try { el.releasePointerCapture(pid); } catch (err) { /* ignorer */ }
+    justDragged = moved;
+    moved = false;
+  };
+  el.addEventListener('pointerup', end);
+  el.addEventListener('pointercancel', end);
+  el.addEventListener('lostpointercapture', end);
+  // Et dra skal ikke telle som et trykk på tonen man slapp over
+  el.addEventListener('click', e => {
+    if (!justDragged) return;
+    justDragged = false;
+    e.stopPropagation();
+    e.preventDefault();
+  }, true);
+  el.addEventListener('wheel', e => {
+    if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;   // vannrett hjul virker allerede
+    el.scrollLeft += e.deltaY;
+    e.preventDefault();
+  }, { passive: false });
+  el.addEventListener('dragstart', e => e.preventDefault());
+}
+
 /* ---------------- Paneler ---------------- */
 function openSheet(id) { $(id).hidden = false; }
 function closeSheet(id) { $(id).hidden = true; }

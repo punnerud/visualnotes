@@ -44,8 +44,9 @@
     display:flex;align-items:stretch;gap:8px;width:100%;
     overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;
     padding:14px calc(50vw - 60px) 12px;
-    scrollbar-width:thin;
+    scrollbar-width:thin;cursor:grab;
   }
+  .strip.grabbing,.strip.grabbing .note{cursor:grabbing;user-select:none}
   .strip::-webkit-scrollbar{height:8px}
   .strip::-webkit-scrollbar-thumb{background:rgba(251,247,238,.25);border-radius:4px}
 
