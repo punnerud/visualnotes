@@ -82,20 +82,30 @@ eq(c.parseNoteName('Fiss4'), { letter: 'F', alt: 1, oct: 4 }, 'iss er kryss');
 eq(c.parseSong('C4,Cis,D').events.map(e => e.midi).join(' '), '60 61 62', 'kryss i rekke');
 
 const compact = c.songToTokens(c.parseSong('C4 D E F G:2 G:2 | A*4 G:4').events);
-eq(compact, 'C4,D,E,F,G:h*2/A*4,G:w', 'kompakt form');
-ok(compact.indexOf(':q') < 0, 'firedeler skrives uten lengde');
-ok(compact.indexOf('+') < 0 && compact.indexOf('|') < 0, 'ingen + eller |');
+eq(compact, 'C4,D,E,F,G:h2/A:q4,G:w', 'kompakt form');
+ok(compact.indexOf('+') < 0 && compact.indexOf('|') < 0 && compact.indexOf('*') < 0,
+   'verken +, | eller * skrives');
+
+// Gjentakelsestallet henger rett på lengden, for «*» blir spist av enkelte apper
+const key = r => r.events.map(e => (e.rest ? '-' : e.letter + e.alt + e.oct) + ':' + e.beats).join(' ');
+eq(key(c.parseSong('A4:e4')), key(c.parseSong('A4:e*4')), 'A4:e4 er det samme som A4:e*4');
+eq(key(c.parseSong('D5:q.3')), key(c.parseSong('D5:1.5 D5:1.5 D5:1.5')), 'punktert med tall');
+eq(key(c.parseSong('-:16')), '-:16', 'tall alene er fortsatt lengde, ikke antall');
+eq(c.parseSong('A4:e4').errors, [], 'ingen tolkefeil');
+// en lenke der «*» er fjernet skal fortsatt gi hele melodien
+const stjålet = 'A4:e*4,B4:e*3,C5:q*2'.replace(/\*/g, '');
+eq(key(c.parseSong(stjålet)), key(c.parseSong('A4:e*4,B4:e*3,C5:q*2')), 'lenke uten stjerner');
 
 // bare tegn som er lovlige i en URL
-const SAFE = /^[A-Za-z0-9,:.\-*/]+$/;
+const SAFE = /^[A-Za-z0-9,:.\-/]+$/;
 c.SONGS.forEach(song => {
   const out = c.songToTokens(c.parseSong(song.s).events);
   ok(SAFE.test(out), `${song.id}: utrygge tegn i "${out.slice(0, 40)}"`);
   ok(out === encodeURIComponent(out).replace(/%2C/g, ',').replace(/%2F/g, '/').replace(/%3A/g, ':'),
     `${song.id}: må prosentkodes`);
   // tur-retur skal gi nøyaktig samme melodi
-  const key = r => r.events.map(e => (e.rest ? '-' : e.letter + e.alt + e.oct) + ':' + e.beats + ':' + (e.phrase || 0)).join(' ');
-  eq(key(c.parseSong(out)), key(c.parseSong(song.s)), `${song.id}: tur-retur`);
+  const k2 = r => r.events.map(e => (e.rest ? '-' : e.letter + e.alt + e.oct) + ':' + e.beats + ':' + (e.phrase || 0)).join(' ');
+  eq(k2(c.parseSong(out)), k2(c.parseSong(song.s)), `${song.id}: tur-retur`);
   ok(out.length <= song.s.length, `${song.id}: ${out.length} tegn mot ${song.s.length} før`);
 });
 
@@ -103,7 +113,6 @@ c.SONGS.forEach(song => {
 const verbose = 'A4:0.5 A4:0.5 A4:0.5 A4:0.5 | B4:0.5 B4:0.5 B4:0.5 A4:0.5 | ' +
                 'A#4:0.5 C5:0.5 | D5:1.5 C5:0.5 | G4:0.25 F4:0.25 E4:0.25 D4:0.25';
 const short = c.songToTokens(c.parseSong(verbose).events);
-const key = r => r.events.map(e => (e.rest ? '-' : e.letter + e.alt + e.oct) + ':' + e.beats).join(' ');
 eq(key(c.parseSong(short)), key(c.parseSong(verbose)), 'ordrik form gir samme melodi');
 ok(short.length < verbose.length * 0.55,
    `for lite innkorting: ${short.length} mot ${verbose.replace(/ /g, '+').length}`);

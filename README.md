@@ -19,7 +19,7 @@ URL, so an LLM can generate a link. Four languages, no build step in the browser
 | Lenke | Hva den gjør |
 |---|---|
 | [`?id=lisa`](https://punnerud.github.io/visualnotes/?id=lisa) | Innebygget sang |
-| [`?s=C4,D,E,F,G:h*2`](https://punnerud.github.io/visualnotes/?s=C4,D,E,F,G:h*2) | Egne toner |
+| [`?s=C4,D,E,F,G:h2`](https://punnerud.github.io/visualnotes/?s=C4,D,E,F,G:h2) | Egne toner |
 | [`?v=0 13 12 1 0`](https://punnerud.github.io/visualnotes/?v=0+13+12+1+0) | Ventiltall i stedet for tonenavn |
 | [`?id=glede&i=altsax&l=sv`](https://punnerud.github.io/visualnotes/?id=glede&i=altsax&l=sv) | Altsaksofon, svensk |
 
@@ -109,15 +109,17 @@ C,D,E                                      uten oktavtall: samme oktav som forri
 C                                          en firedel trenger ingen lengde
 C:w  C:h  C:e  C:s   C:q.   C:1.5          hel, halv, åttedel, sekstendel, punktert, taktslag
 -     -:h                                  pause
-A*4                                        gjenta fire ganger
+A:e4                                       gjenta: tallet henger rett på lengden.
+                                           A:e4 = fire åttedeler, A:q4 = fire firedeler
 /                                          frasemellomrom (ikke ved hver takt — `ts=` gir taktstrekene)
 //                                         større skille (linjeskift ved utskrift)
 C~,C                                       bindebue: slås sammen til én lengre tone
 ```
 
-Alt appen selv skriver bruker bare **bokstaver, tall og `, : . - * /`** — tegn som er lovlige i en URL.
-Det gjør lenken kortere og robust når den limes inn i notat- og meldingsapper. `#` og `|` godtas
-fortsatt når du skriver selv, men må prosentkodes i en lenke, og noen apper kutter lenken der.
+Alt appen selv skriver bruker bare **bokstaver, tall og `, : . - /`** — tegn som er lovlige i en URL.
+Det gjør lenken kortere og robust når den limes inn i notat- og meldingsapper. `#`, `|` og `*` godtas
+fortsatt når du skriver selv, men `#` og `|` må prosentkodes i en lenke, og `*` blir strøket av enkelte
+apper — derfor skrives gjentakelse som `A:e4` og ikke `A:e*4`.
 
 **`B` og `H` betyr begge h/B♮.** B♭ skrives `Bb`, `Hes` eller `Hess`. Ellers forstås både engelsk
 (`F#`, `Bb`), nordisk/tysk (`Fiss`, `Fis`, `Ess`, `As`) og solfège (`do re mi fa sol la si`), og
@@ -157,16 +159,17 @@ Vil du skrive den selv:
 > Lag en URL til https://punnerud.github.io/visualnotes/ som viser melodien til «\<sang\>».
 > Bruk parameteren `s=` med tonene skilt av komma: bokstav + oktavtall bare der melodien hopper
 > (`C4,D,E,F`), `is` for kryss og `b` for b (`Fis4`, `Bb3`). En firedel skrives uten lengde; ellers
-> `:h` halv, `:e` åttedel, `:s` sekstendel, `:q.` punktert firedel. `-` er pause, `A*4` gjentar,
+> `:h` halv, `:e` åttedel, `:s` sekstendel, `:q.` punktert firedel. `-` er pause. Gjentakelse skrives
+> med tallet rett etter lengden: `A:e4` er fire åttedeler, `A:q4` fire firedeler — bruk aldri `*`.
 > `/` er frasemellomrom — ikke sett ett ved hver takt, `ts=` gir taktstrekene selv. Bruk bare
-> bokstaver, tall og `, : . - * /` så lenken tåler å limes inn andre steder.
+> bokstaver, tall og `, : . - /` så lenken tåler å limes inn andre steder.
 > Sett også `t=` (tittel), `ts=` (taktart) og `bpm=`. Tonene skal være det spilleren leser.
 > Svar med bare URL-en.
 
 Eksempel på svar:
 
 ```
-https://punnerud.github.io/visualnotes/?s=C4,D,E,F,G:h*2/A*4,G:w&t=Lisa+gikk+til+skolen&ts=4/4&bpm=100
+https://punnerud.github.io/visualnotes/?s=C4,D,E,F,G:h2/A:q4,G:w&t=Lisa+gikk+til+skolen&ts=4/4&bpm=100
 ```
 
 ---

@@ -107,7 +107,12 @@ function parseSong(str, opts) {
     let beats = 1;
     const ci = tok.indexOf(':');
     if (ci >= 0) {
-      const d = parseDuration(tok.slice(ci + 1));
+      let dpart = tok.slice(ci + 1);
+      // «A4:e4» = fire åttedeler. Tallet henger rett på lengden, uten skilletegn,
+      // fordi «*» blir spist av enkelte apper når lenken limes inn.
+      const cm = dpart.match(/^([A-Za-z]\.{0,2})(\d+)$/);
+      if (cm && repeat === 1) { dpart = cm[1]; repeat = Math.min(64, Math.max(1, parseInt(cm[2], 10))); }
+      const d = parseDuration(dpart);
       if (d === null) { errors.push(tok0); continue; }
       beats = d; tok = tok.slice(0, ci);
     }
@@ -167,7 +172,14 @@ function parseValves(str, opts) {
     const rm = tok.match(/\*(\d+)$/);
     if (rm) { repeat = Math.min(64, parseInt(rm[1], 10)); tok = tok.slice(0, rm.index); }
     const ci = tok.indexOf(':');
-    if (ci >= 0) { const d = parseDuration(tok.slice(ci + 1)); if (d === null) { errors.push(tok0); continue; } beats = d; tok = tok.slice(0, ci); }
+    if (ci >= 0) {
+      let dpart = tok.slice(ci + 1);
+      const cm = dpart.match(/^([A-Za-z]\.{0,2})(\d+)$/);
+      if (cm && repeat === 1) { dpart = cm[1]; repeat = Math.min(64, Math.max(1, parseInt(cm[2], 10))); }
+      const d = parseDuration(dpart);
+      if (d === null) { errors.push(tok0); continue; }
+      beats = d; tok = tok.slice(0, ci);
+    }
     if (tok === '-' || tok.toLowerCase() === 'r') {
       for (let i = 0; i < repeat; i++) { events.push({ rest: true, beats, phrase: i ? 0 : pendingPhrase }); pendingPhrase = 0; }
       continue;
@@ -212,19 +224,27 @@ function songToTokens(events, startOct) {
   const out = [];
   let prev = null;
   for (const e of events) {
-    if (e.phrase === 2) out.push('//'); else if (e.phrase === 1) out.push('/');
-    if (e.rest) { out.push('-' + durToken(e.beats)); continue; }
-    out.push(noteToken(e, prev, so) + durToken(e.beats));
+    if (e.phrase === 2) out.push({ t: '//' }); else if (e.phrase === 1) out.push({ t: '/' });
+    if (e.rest) { out.push({ t: '-', d: durToken(e.beats) }); continue; }
+    out.push({ t: noteToken(e, prev, so), d: durToken(e.beats) });
     prev = { letter: e.letter, alt: e.alt, oct: e.oct };
   }
-  // slå sammen like naboer til A*n
+  // Like naboer slås sammen. Tallet henger rett etter lengden — «A4:e4» — for
+  // «*» overlever ikke alltid å bli limt inn i en notat- eller meldingsapp.
   const packed = [];
-  for (const t of out) {
+  for (const o of out) {
     const p = packed[packed.length - 1];
-    if (p && p.t === t && t !== '/' && t !== '//') { p.n++; continue; }
-    packed.push({ t, n: 1 });
+    if (p && p.t === o.t && p.d === o.d && o.t !== '/' && o.t !== '//') { p.n++; continue; }
+    packed.push({ t: o.t, d: o.d || '', n: 1 });
   }
-  return packed.map(p => (p.n > 1 ? p.t + '*' + p.n : p.t))
+  return packed
+    .map(p => {
+      if (p.n === 1) return p.t + p.d;
+      // For to firedeler er «C,C» kortere enn «C:q2» — velg det som gir minst tegn
+      const short = p.t + (p.d || ':q') + p.n;
+      const plain = new Array(p.n).fill(p.t + p.d).join(',');
+      return short.length <= plain.length ? short : plain;
+    })
     .join(',').replace(/,(\/+),/g, '$1').replace(/^(\/+),/, '$1');
 }
 /* Taktart "4/4" -> taktslag per takt */
