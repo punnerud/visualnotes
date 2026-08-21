@@ -6,11 +6,11 @@ const DEFAULTS = {
   lang: 'no', instrId: 'tromp_bb', naming: 'native', pitchMode: 'written', recorderGerman: false,
   bpm: 100, ts: '4/4', upbeat: 0, auto: false, metronome: true, tone: true, countIn: 4,
   air: 0.6, showFing: true, showBars: true, showOct: true, transpose: 0,
-  dir: 'auto', pRows: 11, pZoom: 0.8, pLand: true,
+  dir: 'auto', audioOffset: 0, pRows: 11, pZoom: 0.8, pLand: true,
 };
 const PERSIST = ['lang', 'instrId', 'naming', 'pitchMode', 'recorderGerman', 'bpm', 'auto',
                  'metronome', 'tone', 'countIn', 'air', 'showFing', 'showBars', 'showOct',
-                 'dir', 'pRows', 'pZoom', 'pLand'];
+                 'dir', 'audioOffset', 'pRows', 'pZoom', 'pLand'];
 const state = Object.assign({}, DEFAULTS, {
   title: '', songId: null, sourceText: '', events: [], cur: 0, words: null, parseErrors: [],
   transposeLocked: false, bpmDefault: 100, aiWish: '',
@@ -122,6 +122,7 @@ function applyQuery(q) {
   if (q.k) { state.transpose = clamp(parseInt(q.k, 10) || 0, -24, 24); state.transposeLocked = true; }
   if (q.n === 'intl' || q.n === 'native') state.naming = q.n;
   if (q.dir === 'auto' || q.dir === 'h' || q.dir === 'v') state.dir = q.dir;
+  if (q.off !== undefined) state.audioOffset = clamp(parseInt(q.off, 10) || 0, -300, 300);
   ['auto', 'met', 'tone'].forEach(k => {
     if (q[k] !== undefined) {
       const v = q[k] !== '0' && q[k] !== 'false';
@@ -165,6 +166,7 @@ function buildUrl() {
   if (state.bpm !== DEFAULTS.bpm) add('bpm', state.bpm);
   if (state.pitchMode !== 'written') add('p', 'c');
   if (state.dir !== 'auto') add('dir', state.dir);
+  if (state.audioOffset) add('off', state.audioOffset);
   if (state.transpose) add('k', state.transpose);
   if (state.auto !== DEFAULTS.auto) add('auto', state.auto ? 1 : 0);
   if (state.metronome !== DEFAULTS.metronome) add('met', state.metronome ? 1 : 0);
@@ -186,6 +188,17 @@ function updatePlayBtn() {
 }
 function beginPlayback(from, countIn) {
   if (!state.events.length) return false;
+  stopCalibration();          // kalibratoren skal ikke klikke oppi avspillingen
+  // iOS starter lydmotoren asynkront. Venter vi ikke, regnes både t0 og glidingen
+  // mot en klokke som står stille, og bildet kommer i gang før lyden.
+  const ac = ensureAC();
+  if (ac && ac.state !== 'running' && ac.resume) {
+    ac.resume().then(() => startNow(from, countIn), () => startNow(from, countIn));
+    return true;
+  }
+  return startNow(from, countIn);
+}
+function startNow(from, countIn) {
   const ins = curInstr();
   player.onNote = i => { go(i); flash(i); };
   player.onStop = () => { updatePlayBtn(); freezeLanes(); };
@@ -194,15 +207,21 @@ function beginPlayback(from, countIn) {
     bpm: state.bpm, ts: state.ts, upbeat: state.upbeat, from: from || 0,
     metronome: state.metronome, tone: state.tone,
     countIn: countIn === undefined ? state.countIn : countIn,
-    transpose: 0, group: ins.group,
+    transpose: 0, group: ins.group, visualOffset: state.audioOffset / 1000,
   });
   updatePlayBtn();
   if (ok) {
-    const lead = AC ? player.t0 - AC.currentTime : 0;
+    const lead = (AC ? player.t0 - AC.currentTime : 0) + player.visualLead;
     glideBand(from || 0, lead);
     if (curDir() === 'v') positionStripLane(true);
   }
   return ok;
+}
+/* Ny lydforsinkelse: gjenoppta fra tonen man står på, så man kan stille inn mens man hører */
+function applyAudioOffset(ms) {
+  state.audioOffset = clamp(Math.round(ms), -300, 300);
+  saveState(); syncUrl();
+  if (player.playing) beginPlayback(state.cur, 0);
 }
 function playPause() {
   if (player.playing) { stopPlayback(); freezeLanes(); updatePlayBtn(); return; }
@@ -269,9 +288,9 @@ function init() {
   $('openSongs').addEventListener('click', () => { renderSongs(); openSheet('songs'); });
   $('openShare').addEventListener('click', () => { renderShare(); openSheet('share'); });
   document.querySelectorAll('[data-close]').forEach(b =>
-    b.addEventListener('click', () => closeSheet(b.dataset.close)));
+    b.addEventListener('click', () => { stopCalibration(); closeSheet(b.dataset.close); }));
   document.querySelectorAll('.sheet').forEach(s =>
-    s.addEventListener('click', e => { if (e.target === s) s.hidden = true; }));
+    s.addEventListener('click', e => { if (e.target === s) { stopCalibration(); s.hidden = true; } }));
 
   $('pclose').addEventListener('click', () => { $('printview').hidden = true; });
   $('doPrint').addEventListener('click', () => window.print());
@@ -285,7 +304,7 @@ function init() {
   document.addEventListener('keydown', e => {
     const openSheetEl = document.querySelector('.sheet:not([hidden])');
     if (e.key === 'Escape') {
-      if (openSheetEl) { openSheetEl.hidden = true; return; }
+      if (openSheetEl) { stopCalibration(); openSheetEl.hidden = true; return; }
       if (!$('printview').hidden) { $('printview').hidden = true; return; }
     }
     if (openSheetEl || !$('printview').hidden) return;

@@ -426,6 +426,7 @@ function rangeRow(labelKey, min, max, step, value, fmtFn, onInput) {
   return row;
 }
 function renderSettings() {
+  stopCalibration();          // prikkene tegnes på nytt, så kalibratoren må stoppe
   const b = $('setBody');
   b.innerHTML = '';
   $('setTitle').textContent = T('ui.settings');
@@ -495,6 +496,9 @@ function renderSettings() {
   b.appendChild(switchRow('ui.metronome', null, state.metronome, v => { state.metronome = v; saveState(); syncUrl(); }));
   b.appendChild(switchRow('ui.toneSound', null, state.tone, v => { state.tone = v; saveState(); syncUrl(); }));
   b.appendChild(switchRow('ui.countIn', null, state.countIn > 0, v => { state.countIn = v ? 4 : 0; saveState(); syncUrl(); }));
+  b.appendChild(rangeRow('ui.audioOffset', -300, 300, 10, state.audioOffset,
+    v => (v > 0 ? '+' : '') + v + ' ms', applyAudioOffset));
+  b.appendChild(calibratorRow());
   b.appendChild(rangeRow('ui.air', 0, 1.6, 0.1, state.air, v => Math.round(v * 100) + ' %', v => { state.air = v; saveState(); renderStrip(); go(state.cur, true); }));
   b.appendChild(switchRow('ui.showFing', null, state.showFing, v => { state.showFing = v; saveState(); rebuildAll(); }));
   b.appendChild(switchRow('ui.showBars', null, state.showBars, v => { state.showBars = v; saveState(); rebuildAll(); }));
@@ -747,6 +751,38 @@ function renderAi() {
   hint.style.textAlign = 'left';
   hint.textContent = T('ui.aiHint');
   b.appendChild(hint);
+}
+
+/* Kalibrator: klikk som en metronom, med to prikker som lyser vekselvis.
+   Man drar i lydforsinkelsen til prikken blinker i samme øyeblikk som klikket. */
+function calibratorRow() {
+  const row = document.createElement('div');
+  row.className = 'row';
+  row.innerHTML = `<label>${esc(T('ui.calibrate'))}<span class="sub">${esc(T('ui.calibrateSub'))}</span></label>`;
+  const wrap = document.createElement('div');
+  wrap.className = 'calib';
+  const btn = document.createElement('button');
+  btn.className = 'calibbtn';
+  const dots = [0, 1].map(() => {
+    const d = document.createElement('span');
+    d.className = 'calibdot';
+    wrap.appendChild(d);
+    return d;
+  });
+  const paint = () => { btn.textContent = T(calibRunning() ? 'ui.calibStop' : 'ui.calibStart'); };
+  btn.addEventListener('click', () => {
+    if (calibRunning()) { stopCalibration(); dots.forEach(d => d.classList.remove('lit')); }
+    else {
+      startCalibration(100, () => state.audioOffset / 1000, i => {
+        dots.forEach((d, k) => d.classList.toggle('lit', k === i % 2));
+      });
+    }
+    paint();
+  });
+  paint();
+  wrap.insertBefore(btn, wrap.firstChild);
+  row.appendChild(wrap);
+  return row;
 }
 
 /* ---------------- Tempolinje ---------------- */

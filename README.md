@@ -53,6 +53,13 @@ I begge tilfeller er det samme notebånd, og notene leses vannrett slik de skal.
 Standarden følger instrumentet, men kan overstyres i innstillingene eller med `dir=h` / `dir=v`. I
 fallende modus er piltast opp neste tone og ned forrige, og banen kan dras med musa eller fingeren.
 
+**Lyd og bilde i takt.** En tone som leveres til lydkortet høres først et lite øyeblikk etter — på en
+telefon 100–250 ms, mer over Bluetooth. Appen leser `outputLatency` fra nettleseren og forsinker bildet
+tilsvarende, så notehodet treffer spillehodet i samme øyeblikk som tonen høres. Safari underrapporterer
+ofte, så innstillingene har en **lydforsinkelse** du kan justere selv, med en liten kalibrator: den slår
+takten som en metronom og lar to prikker lyse vekselvis, og du drar til prikken blinker samtidig som
+klikket høres. Verdien huskes per enhet.
+
 **Utskrift** (🖨) viser arket i faktisk størrelse med de samme margene som skrives ut, så
 forhåndsvisningen er det du får. Standard er liggende A4 på 80 %. En linje med toner deles aldri over
 et sideskift. Velg «Standard» marger i utskriftsdialogen og slå av topp- og bunntekst.
@@ -81,6 +88,7 @@ Alt kan settes med GET-parametere. Korte navn er de kanoniske; de lange i parent
 | `tone` | spill tonen av/på | `1` |
 | `count` | antall opptellingsslag før start | `4` |
 | `dir` | retning: `auto`, `h` (sidelengs) eller `v` (fallende) | `auto` |
+| `off` | lydforsinkelse i millisekunder, −300…300 | `0` |
 | `air` | luft mellom notene, `0`–`1.6` | `0.6` |
 | `fing` | `0` skjuler grepdiagrammene | `1` |
 | `bars` | `0` skjuler taktstrekene | `1` |

@@ -13,6 +13,14 @@ function ensureAC() {
   return AC;
 }
 function midiFreq(m) { return 440 * Math.pow(2, (m - 69) / 12); }
+/* Hvor lenge det tar fra en tone leveres til den faktisk høres. currentTime er
+   innleveringstida, ikke lyttetida — på en telefon skiller det 100–250 ms. */
+function outputLatency(ac) {
+  if (!ac) return 0;
+  const l = (typeof ac.outputLatency === 'number' && ac.outputLatency) ||
+            (typeof ac.baseLatency === 'number' && ac.baseLatency) || 0;
+  return Math.min(Math.max(l, 0), 0.5);
+}
 
 function brassTone(ac, freq, t0, dur, dest, gainMul) {
   const g = ac.createGain(), peak = 0.30 * (gainMul || 1);
@@ -81,7 +89,7 @@ function click(when, accent, dest) {
 /* ---------------- Planlegger ---------------- */
 const player = {
   playing: false, timer: null, notes: [], clicks: [], ni: 0, ci: 0,
-  onNote: null, onStop: null, t0: 0, endTime: 0, bus: null, gen: 0,
+  onNote: null, onStop: null, t0: 0, endTime: 0, bus: null, gen: 0, visualLead: 0,
 };
 function buildSchedule(events, opts) {
   const o = opts, spb = 60 / o.bpm;
@@ -109,6 +117,8 @@ function startPlayback(events, opts) {
   player.bus.gain.value = 1;
   player.bus.connect(ac.destination);
   const from = opts.from || 0;
+  // Bildet skal vente like lenge som lyden bruker på å komme ut av høyttaleren
+  player.visualLead = outputLatency(ac) + (opts.visualOffset || 0);
   const sc = buildSchedule(events.slice(from), opts);
   const lead = 0.12 + (opts.countIn ? opts.countIn * sc.unit : 0);
   player.t0 = ac.currentTime + lead;
@@ -120,13 +130,14 @@ function startPlayback(events, opts) {
   player.ni = 0; player.ci = 0; player.playing = true;
   player.endTime = player.t0 + sc.total;
   player.opts = opts;
-  player.timer = setInterval(() => tick(ac), 25);
+  player.timer = setInterval(() => tick(ac), 50);
   tick(ac);
   return true;
 }
 function tick(ac) {
   if (!player.playing) return;
-  const now = ac.currentTime, horizon = now + 0.15, o = player.opts;
+  // Rommelig horisont: på telefon kan hovedtråden være opptatt med å animere
+  const now = ac.currentTime, horizon = now + 0.35, o = player.opts;
   while (player.ci < player.clicks.length && player.t0 + player.clicks[player.ci].t < horizon) {
     const c = player.clicks[player.ci++];
     click(player.t0 + c.t, c.accent, player.bus);
@@ -134,7 +145,7 @@ function tick(ac) {
   while (player.ni < player.notes.length && player.t0 + player.notes[player.ni].t < horizon) {
     const n = player.notes[player.ni++];
     if (o.tone && !n.rest) playTone(n.midi + (o.transpose || 0), n.dur * 0.92, player.t0 + n.t, o.group, player.bus);
-    const delay = Math.max(0, (player.t0 + n.t - now) * 1000);
+    const delay = Math.max(0, (player.t0 + n.t - now + player.visualLead) * 1000);
     const gen = player.gen;
     setTimeout(() => {
       if (player.playing && player.gen === gen && player.onNote) player.onNote(n.i);
@@ -154,6 +165,55 @@ function stopPlayback() {
   if (!bus) return;
   // Toner og klikk kan allerede være planlagt noen hundredeler fram i tid,
   // og en lang tone kan klinge i flere sekunder. Demp bussen og koble den fra.
+  try {
+    bus.gain.cancelScheduledValues(AC.currentTime);
+    bus.gain.setTargetAtTime(0.0001, AC.currentTime, 0.012);
+  } catch (e) { /* ignorer */ }
+  setTimeout(() => { try { bus.disconnect(); } catch (e) { /* ignorer */ } }, 150);
+}
+
+/* ---------------- Kalibrering ----------------
+   Slår takten som en metronom og melder fra når hvert klikk skal *høres*.
+   Forsinkelsen leses på nytt for hvert klikk som planlegges, så et dra i
+   slideren slår gjennom i bildet med én gang. */
+const calib = { timer: null, bus: null, t0: 0, n: 0, onBeat: null, getOffset: null, bpm: 100 };
+function calibRunning() { return !!calib.timer; }
+function startCalibration(bpm, getOffset, onBeat) {
+  const ac = ensureAC();
+  if (!ac) return false;
+  stopCalibration();
+  calib.bus = ac.createGain();
+  calib.bus.gain.value = 1;
+  calib.bus.connect(ac.destination);
+  calib.bpm = bpm || 100;
+  calib.getOffset = getOffset || (() => 0);
+  calib.onBeat = onBeat;
+  calib.t0 = ac.currentTime + 0.25;
+  calib.n = 0;
+  calib.timer = setInterval(() => calibTick(ac), 50);
+  calibTick(ac);
+  return true;
+}
+function calibTick(ac) {
+  if (!calib.timer) return;
+  const step = 60 / calib.bpm;
+  const horizon = ac.currentTime + 0.35;
+  while (calib.t0 + calib.n * step < horizon) {
+    const i = calib.n++;
+    const at = calib.t0 + i * step;
+    click(at, i % 2 === 0, calib.bus);
+    const lead = outputLatency(ac) + calib.getOffset();
+    const delay = Math.max(0, (at - ac.currentTime + lead) * 1000);
+    setTimeout(() => { if (calib.timer && calib.onBeat) calib.onBeat(i); }, delay);
+  }
+}
+function stopCalibration() {
+  if (calib.timer) clearInterval(calib.timer);
+  calib.timer = null;
+  calib.onBeat = null;
+  const bus = calib.bus;
+  calib.bus = null;
+  if (!bus) return;
   try {
     bus.gain.cancelScheduledValues(AC.currentTime);
     bus.gain.setTargetAtTime(0.0001, AC.currentTime, 0.012);
