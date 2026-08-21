@@ -45,7 +45,7 @@ Alt kan settes med GET-parametere. Korte navn er de kanoniske; de lange i parent
 | `ts` | taktart, f.eks. `3/4`, `6/8` | `4/4` |
 | `up` | opptakt i taktslag | `0` |
 | `bpm` (`tempo`) | tempo 30–240 | `100` |
-| `auto` | `1` = start avspilling med én gang | `0` |
+| `auto` | `1` = start avspilling med én gang (nettleseren krever ett trykk før lyd) | `0` |
 | `met` | metronom av/på | `1` |
 | `tone` | spill tonen av/på | `1` |
 | `count` | antall opptellingsslag før start | `4` |

@@ -2048,6 +2048,27 @@ function flash(i) {
   flashTimer = setTimeout(() => el.classList.remove('beat'), 140);
 }
 
+/* Automatisk start: nettleseren tillater ikke lyd før brukeren har rørt siden,
+   så vi prøver med én gang, og ellers ved første trykk eller tastetrykk. */
+function armAutoStart() {
+  let started = false;
+  const kick = () => {
+    if (started || player.playing) return;
+    started = true;
+    document.removeEventListener('pointerdown', kick);
+    document.removeEventListener('keydown', kick);
+    playPause();
+  };
+  setTimeout(() => {
+    const ac = ensureAC();
+    if (ac && ac.state === 'running') kick();
+    else {
+      document.addEventListener('pointerdown', kick);
+      document.addEventListener('keydown', kick);
+    }
+  }, 300);
+}
+
 /* ---------------- Oppstart ---------------- */
 function init() {
   Object.assign(state, DEFAULTS);
@@ -2096,7 +2117,7 @@ function init() {
   rebuildAll();
   updatePlayBtn();
   go(state.cur, true);
-  if (state.auto) setTimeout(playPause, 350);
+  if (state.auto) armAutoStart();
   window.__app = { state, go, setSource, loadSong, setInstrument, buildUrl, rebuildAll };
 }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
