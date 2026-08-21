@@ -94,6 +94,7 @@ function rebuildAll() {
   }
   state.events = markBars(state.events, state.ts, state.upbeat);
   renderStrip();
+  renderProgress();
   renderLegend();
   updateTempoBar();
   go(state.cur, true);

@@ -99,6 +99,22 @@
     background:var(--navy-deep);border-top:1px solid rgba(251,247,238,.12);
     box-shadow:0 -8px 20px rgba(0,0,0,.3);
   }
+  .progress{
+    align-self:stretch;display:flex;align-items:stretch;gap:2px;
+    height:12px;margin:0 2px 2px;
+  }
+  .pseg{
+    flex:0 1 auto;min-width:3px;border-radius:3px;overflow:hidden;cursor:pointer;
+    background:rgba(251,247,238,.20);transition:background .15s ease;
+  }
+  .pseg.rest{background:rgba(251,247,238,.07)}
+  .pseg:hover{background:rgba(251,247,238,.38)}
+  .pseg.barstart{margin-left:5px}
+  .pseg.phrasestart{margin-left:9px}
+  .pseg.done > i{background:rgba(242,178,52,.5)}
+  .pseg.on > i{background:var(--gold);box-shadow:0 0 8px rgba(242,178,52,.7)}
+  .pseg > i{display:block;height:100%;width:0;background:var(--gold);border-radius:3px}
+  .pseg.rest > i{background:rgba(242,178,52,.28)}
   .crow{display:flex;align-items:center;justify-content:center;gap:10px}
   .tempo{display:inline-flex;align-items:center;gap:4px;padding:4px;
     background:rgba(251,247,238,.08);border:1px solid rgba(251,247,238,.16);border-radius:999px}
@@ -209,7 +225,7 @@
     .strip{padding-left:calc(50vw - 54px);padding-right:calc(50vw - 54px)}
     .nav{padding:13px 16px;font-size:15px}
   }
-  @media (prefers-reduced-motion: reduce){ .note,.nav,.switch::after{transition:none} }
+  @media (prefers-reduced-motion: reduce){ .note,.nav,.switch::after,.pseg{transition:none} }
 </style>
 </head>
 <body>
@@ -234,6 +250,7 @@
 </main>
 
 <div class="controls">
+  <div class="progress" id="progress" aria-hidden="true"></div>
   <div class="crow">
     <div class="tempo">
       <button class="tstep" id="bpmM">−</button>
@@ -1602,7 +1619,56 @@ function go(i, instant) {
   $('pos').textContent = state.cur + 1;
   $('prev').disabled = state.cur === 0;
   $('next').disabled = state.cur === state.events.length - 1;
+  paintProgress();
   centerCard(cards[state.cur], instant);
+}
+
+/* Framdriftslinje: én bit per tone, bredden følger notelengden, så man ser
+   hvor lang tonen er før man kommer dit. Biten fylles i takt med tonen. */
+let pSegs = [];
+function renderProgress() {
+  const p = $('progress');
+  p.innerHTML = '';
+  const total = state.events.reduce((a, e) => a + e.beats, 0) || 1;
+  pSegs = state.events.map((e, i) => {
+    const b = document.createElement('div');
+    b.className = 'pseg' + (e.rest ? ' rest' : '');
+    b.style.flexBasis = (100 * e.beats / total).toFixed(4) + '%';
+    if (e.bar && state.showBars) b.classList.add('barstart');
+    else if (e.phrase) b.classList.add('phrasestart');
+    const w = e.rest ? T('ui.rest') : dispNote(writtenOf(e));
+    b.title = `${i + 1}. ${w} · ${(+e.beats.toFixed(3))}`;
+    b.addEventListener('click', () => { stopIfPlaying(); go(i); });
+    b.innerHTML = '<i></i>';
+    p.appendChild(b);
+    return b;
+  });
+}
+function paintProgress() {
+  if (!pSegs.length) return;
+  const cur = state.cur;
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  pSegs.forEach((b, j) => {
+    if (j === cur) return;
+    b.classList.toggle('done', j < cur);
+    b.classList.remove('on');
+    const f = b.firstChild;
+    f.style.transition = 'none';
+    f.style.width = j < cur ? '100%' : '0';
+  });
+  const b = pSegs[cur];
+  if (!b) return;
+  b.classList.remove('done');
+  b.classList.add('on');
+  const f = b.firstChild;
+  f.style.transition = 'none';
+  f.style.width = '0';
+  void f.offsetWidth;                       // tvinger omtegning før ny animasjon
+  if (player.playing && !reduce) {
+    const secs = state.events[cur].beats * 60 / state.bpm;
+    f.style.transition = 'width ' + secs.toFixed(3) + 's linear';
+  }
+  f.style.width = '100%';
 }
 function instrName(id) { return T('instruments.' + id) || id; }
 function updateHeader() {
@@ -2192,6 +2258,7 @@ function rebuildAll() {
   }
   state.events = markBars(state.events, state.ts, state.upbeat);
   renderStrip();
+  renderProgress();
   renderLegend();
   updateTempoBar();
   go(state.cur, true);

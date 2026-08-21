@@ -30,6 +30,9 @@ speiles i URL-en, så lenken i adressefeltet er alltid den du kan dele.
 tallet kan du skrive inn et nøyaktig tempo. `↺` ved siden av setter det tilbake til melodiens eget.
 Endrer du tempo mens den spiller, fortsetter den i det nye tempoet fra tonen du står på.
 ▶ spiller alltid fra første tone. Tonerekka kan dras sidelengs med musa, og hjulet blar vannrett.
+Nederst ligger en **framdriftslinje** med én bit per tone, der bredden følger notelengden — så du ser
+hvor lang neste tone er før du kommer dit. Biten fylles i takt med tonen mens den spiller, og du kan
+trykke på en bit for å hoppe dit.
 
 **Utskrift** (🖨) viser arket i faktisk størrelse med de samme margene som skrives ut, så
 forhåndsvisningen er det du får. Standard er liggende A4 på 80 %. En linje med toner deles aldri over

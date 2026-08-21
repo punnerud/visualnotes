@@ -113,7 +113,56 @@ function go(i, instant) {
   $('pos').textContent = state.cur + 1;
   $('prev').disabled = state.cur === 0;
   $('next').disabled = state.cur === state.events.length - 1;
+  paintProgress();
   centerCard(cards[state.cur], instant);
+}
+
+/* Framdriftslinje: én bit per tone, bredden følger notelengden, så man ser
+   hvor lang tonen er før man kommer dit. Biten fylles i takt med tonen. */
+let pSegs = [];
+function renderProgress() {
+  const p = $('progress');
+  p.innerHTML = '';
+  const total = state.events.reduce((a, e) => a + e.beats, 0) || 1;
+  pSegs = state.events.map((e, i) => {
+    const b = document.createElement('div');
+    b.className = 'pseg' + (e.rest ? ' rest' : '');
+    b.style.flexBasis = (100 * e.beats / total).toFixed(4) + '%';
+    if (e.bar && state.showBars) b.classList.add('barstart');
+    else if (e.phrase) b.classList.add('phrasestart');
+    const w = e.rest ? T('ui.rest') : dispNote(writtenOf(e));
+    b.title = `${i + 1}. ${w} · ${(+e.beats.toFixed(3))}`;
+    b.addEventListener('click', () => { stopIfPlaying(); go(i); });
+    b.innerHTML = '<i></i>';
+    p.appendChild(b);
+    return b;
+  });
+}
+function paintProgress() {
+  if (!pSegs.length) return;
+  const cur = state.cur;
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  pSegs.forEach((b, j) => {
+    if (j === cur) return;
+    b.classList.toggle('done', j < cur);
+    b.classList.remove('on');
+    const f = b.firstChild;
+    f.style.transition = 'none';
+    f.style.width = j < cur ? '100%' : '0';
+  });
+  const b = pSegs[cur];
+  if (!b) return;
+  b.classList.remove('done');
+  b.classList.add('on');
+  const f = b.firstChild;
+  f.style.transition = 'none';
+  f.style.width = '0';
+  void f.offsetWidth;                       // tvinger omtegning før ny animasjon
+  if (player.playing && !reduce) {
+    const secs = state.events[cur].beats * 60 / state.bpm;
+    f.style.transition = 'width ' + secs.toFixed(3) + 's linear';
+  }
+  f.style.width = '100%';
 }
 function instrName(id) { return T('instruments.' + id) || id; }
 function updateHeader() {

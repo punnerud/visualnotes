@@ -99,6 +99,22 @@
     background:var(--navy-deep);border-top:1px solid rgba(251,247,238,.12);
     box-shadow:0 -8px 20px rgba(0,0,0,.3);
   }
+  .progress{
+    align-self:stretch;display:flex;align-items:stretch;gap:2px;
+    height:12px;margin:0 2px 2px;
+  }
+  .pseg{
+    flex:0 1 auto;min-width:3px;border-radius:3px;overflow:hidden;cursor:pointer;
+    background:rgba(251,247,238,.20);transition:background .15s ease;
+  }
+  .pseg.rest{background:rgba(251,247,238,.07)}
+  .pseg:hover{background:rgba(251,247,238,.38)}
+  .pseg.barstart{margin-left:5px}
+  .pseg.phrasestart{margin-left:9px}
+  .pseg.done > i{background:rgba(242,178,52,.5)}
+  .pseg.on > i{background:var(--gold);box-shadow:0 0 8px rgba(242,178,52,.7)}
+  .pseg > i{display:block;height:100%;width:0;background:var(--gold);border-radius:3px}
+  .pseg.rest > i{background:rgba(242,178,52,.28)}
   .crow{display:flex;align-items:center;justify-content:center;gap:10px}
   .tempo{display:inline-flex;align-items:center;gap:4px;padding:4px;
     background:rgba(251,247,238,.08);border:1px solid rgba(251,247,238,.16);border-radius:999px}
@@ -209,6 +225,6 @@
     .strip{padding-left:calc(50vw - 54px);padding-right:calc(50vw - 54px)}
     .nav{padding:13px 16px;font-size:15px}
   }
-  @media (prefers-reduced-motion: reduce){ .note,.nav,.switch::after{transition:none} }
+  @media (prefers-reduced-motion: reduce){ .note,.nav,.switch::after,.pseg{transition:none} }
 </style>
 </head>
