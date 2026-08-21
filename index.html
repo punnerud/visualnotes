@@ -105,11 +105,13 @@
      under kortene i vannrett modus, og som et bånd tvers over ved landingslinja
      i fallende modus, der kortene faller bak det. */
   .sband{
-    position:relative;height:94px;overflow:visible;
+    position:relative;height:94px;overflow:visible;touch-action:none;cursor:grab;
     background:var(--paper);
     border-top:3px solid var(--gold);border-bottom:1px solid rgba(28,23,18,.25);
   }
   .sband.inflow{margin:0 0 10px}
+  .sband.grabbing{cursor:grabbing}
+  .sband.grabbing .sseg{cursor:grabbing}
   .sband.overlay{position:absolute;left:0;right:0;z-index:2;box-shadow:0 10px 26px rgba(0,0,0,.45)}
   .swin{position:absolute;inset:0;overflow:hidden}
   .slane{position:absolute;left:0;top:8px;height:78px;display:flex;will-change:transform}
@@ -1809,7 +1811,7 @@ function go(i, instant) {
    bevegelse, slik at tonene faller nedover i takt med musikken. */
 const V_PLAYHEAD = 0.62;              // landingslinja, andel ned i vinduet
 const S_HEAD = 13;                    // notehodets avstand fra segmentets venstrekant
-let vY = 0, sSegs = [], beatStart = [], beatTotal = 0;
+let vY = 0, sX = 0, sSegs = [], beatStart = [], beatTotal = 0;
 /* Alle kortene er like høye. Varigheten leses av notebåndet under, og like
    høye kort gjør at man ser flere av de kommende grepene. */
 function cardH() { return 86 + state.air * 24; }
@@ -1844,8 +1846,30 @@ function sOffset(beatPos) {
 function sLaneStyle(transition, x) {
   const lane = $('slane');
   if (!lane) return;
+  sX = x;
   lane.style.transition = transition;
   lane.style.transform = 'translateX(' + x.toFixed(1) + 'px)';
+}
+/* Hvilket taktslag som ligger på spillehodet ved en gitt forskyvning */
+function beatAtBandOffset(x) {
+  const w = ($('sband') && $('sband').clientWidth) || 1;
+  return (w / 2 - S_HEAD - x) / ppbS();
+}
+/* Invers av beatAtIndexF: fra taktslag til (brøkdels) tonenummer */
+function indexAtBeat(beat) {
+  const n = state.events.length;
+  if (!n) return 0;
+  if (beat <= 0) return 0;
+  for (let i = 0; i < n; i++) {
+    const len = state.events[i].beats;
+    if (beat < beatStart[i] + len) return i + (beat - beatStart[i]) / len;
+  }
+  return n - 1;
+}
+/* Flytter begge banene til samme punkt i sangen */
+function setLanesFromBeat(beat, transition) {
+  sLaneStyle(transition, sOffset(beat));
+  if (curDir() === 'v') vLaneStyle(transition, vOffset(indexAtBeat(beat)));
 }
 function paintBand() {
   sSegs.forEach((el, j) => {
@@ -1916,7 +1940,8 @@ function freezeOne(id) {
 function freezeLanes() {
   const v = freezeOne('vlane');
   if (v) vY = parseFloat(v[5]);
-  freezeOne('slane');
+  const b = freezeOne('slane');
+  if (b) sX = parseFloat(b[4]);
 }
 /* Etter dra eller hjul: hopp til tonen banen står på */
 function snapStripLane() {
@@ -1964,6 +1989,75 @@ function renderLegend() {
   l.innerHTML = items + `<button class="pill" id="openPrint">🖨 ${esc(T('ui.print'))}</button>`;
   $('openPrint').addEventListener('click', openPrint);
   $('hint').textContent = T('ui.hint');
+}
+
+/* Notebåndet kan dras sidelengs — det er den naturlige bevegelsen på en
+   vannrett tidslinje, og den korteste veien tilbake til begynnelsen.
+   Kortene følger med, og ved slipp hopper begge til nærmeste tone. */
+function setupBandDrag(el) {
+  let down = false, moved = false, pid = null, startX = 0, base = 0;
+  let justDragged = false, lastIdx = -1, snapTimer = null;
+  const beatAt = x => clamp(beatAtBandOffset(x), 0, beatTotal);
+  const follow = beat => {
+    setLanesFromBeat(beat, 'none');
+    if (curDir() !== 'v') {                    // kortstripen hopper til nærmeste tone
+      const i = clamp(Math.round(indexAtBeat(beat)), 0, state.events.length - 1);
+      if (i !== lastIdx) { lastIdx = i; centerCard(cards[i], true); }
+    }
+  };
+  const snap = () => {
+    if (!state.events.length) return;
+    go(clamp(Math.round(indexAtBeat(beatAt(sX))), 0, state.events.length - 1));
+  };
+  el.addEventListener('pointerdown', e => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    down = true; moved = false; pid = e.pointerId;
+    startX = e.clientX; base = sX; lastIdx = -1;
+    e.stopPropagation();
+  });
+  el.addEventListener('pointermove', e => {
+    if (!down || e.pointerId !== pid) return;
+    e.stopPropagation();
+    const dx = e.clientX - startX;
+    if (!moved) {
+      if (Math.abs(dx) < 5) return;
+      moved = true;
+      el.classList.add('grabbing');
+      stopIfPlaying();
+      try { el.setPointerCapture(pid); } catch (err) { /* ignorer */ }
+    }
+    follow(beatAt(base + dx));
+    e.preventDefault();
+  });
+  const end = e => {
+    if (!down) return;
+    down = false;
+    el.classList.remove('grabbing');
+    try { el.releasePointerCapture(pid); } catch (err) { /* ignorer */ }
+    if (e) e.stopPropagation();
+    justDragged = moved;
+    if (moved) snap();
+    moved = false;
+  };
+  el.addEventListener('pointerup', end);
+  el.addEventListener('pointercancel', end);
+  el.addEventListener('lostpointercapture', end);
+  el.addEventListener('click', e => {
+    if (!justDragged) return;
+    justDragged = false;
+    e.stopPropagation();
+    e.preventDefault();
+  }, true);
+  el.addEventListener('wheel', e => {
+    const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+    stopIfPlaying();
+    follow(beatAt(sX - d));
+    clearTimeout(snapTimer);
+    snapTimer = setTimeout(snap, 140);
+    e.preventDefault();
+    e.stopPropagation();
+  }, { passive: false });
+  el.addEventListener('dragstart', e => e.preventDefault());
 }
 
 function setupStripDrag(el) {
@@ -2843,6 +2937,7 @@ function init() {
     positionBand(true);
   });
   setupStripDrag($('strip'));
+  setupBandDrag($('sband'));
 
   rebuildAll();
   updateTempoBar();

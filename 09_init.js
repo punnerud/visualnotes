@@ -321,6 +321,7 @@ function init() {
     positionBand(true);
   });
   setupStripDrag($('strip'));
+  setupBandDrag($('sband'));
 
   rebuildAll();
   updateTempoBar();
