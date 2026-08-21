@@ -1790,7 +1790,9 @@ function centerCard(el, instant) {
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   strip.scrollBy({ left: delta, behavior: (instant || reduce) ? 'auto' : 'smooth' });
 }
-function go(i, instant) {
+/* Merker tonen uten å flytte noen baner — brukes mens man drar,
+   så notelinja får ligge der fingeren slapp den. */
+function selectOnly(i) {
   if (!state.events.length) return;
   state.cur = clamp(i, 0, state.events.length - 1);
   cards.forEach((c, j) => {
@@ -1801,9 +1803,13 @@ function go(i, instant) {
   $('prev').disabled = state.cur === 0;
   $('next').disabled = state.cur === state.events.length - 1;
   paintBand();
+}
+function go(i, instant, keepBand) {
+  if (!state.events.length) return;
+  selectOnly(i);
   if (curDir() === 'v') positionStripLane(instant);
   else centerCard(cards[state.cur], instant);
-  if (!player.playing) positionBand(instant);
+  if (!player.playing && !keepBand) positionBand(instant);
 }
 
 /* ---------------- Loddrett bane ----------------
@@ -2000,18 +2006,16 @@ function renderLegend() {
    Kortene følger med, og ved slipp hopper begge til nærmeste tone. */
 function setupBandDrag(el) {
   let down = false, moved = false, pid = null, startX = 0, base = 0;
-  let justDragged = false, lastIdx = -1, snapTimer = null;
-  const beatAt = x => clamp(beatAtBandOffset(x), 0, beatTotal);
+  let dragEndAt = -1e9, lastIdx = -1;
+  // Litt slark i hver ende, så det ikke føles som en vegg ved første og siste tone
+  const beatAt = x => clamp(beatAtBandOffset(x), -2, beatTotal + 2);
   const follow = beat => {
     setLanesFromBeat(beat, 'none');
-    if (curDir() !== 'v') {                    // kortstripen hopper til nærmeste tone
-      const i = clamp(Math.round(indexAtBeat(beat)), 0, state.events.length - 1);
-      if (i !== lastIdx) { lastIdx = i; centerCard(cards[i], true); }
-    }
-  };
-  const snap = () => {
-    if (!state.events.length) return;
-    go(clamp(Math.round(indexAtBeat(beatAt(sX))), 0, state.events.length - 1));
+    const i = clamp(Math.round(indexAtBeat(beat)), 0, state.events.length - 1);
+    if (i === lastIdx) return;
+    lastIdx = i;
+    selectOnly(i);                             // merk tonen, men la linja ligge
+    if (curDir() !== 'v') centerCard(cards[i], true);
   };
   el.addEventListener('pointerdown', e => {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
@@ -2039,16 +2043,16 @@ function setupBandDrag(el) {
     el.classList.remove('grabbing');
     try { el.releasePointerCapture(pid); } catch (err) { /* ignorer */ }
     if (e) e.stopPropagation();
-    justDragged = moved;
-    if (moved) snap();
+    if (moved) dragEndAt = performance.now();
     moved = false;
   };
   el.addEventListener('pointerup', end);
   el.addEventListener('pointercancel', end);
   el.addEventListener('lostpointercapture', end);
+  // Et dra skal ikke telle som trykk. Med finger kommer det ikke noe click etter
+  // et dra i det hele tatt, så en flaggverdi ville spist det neste ekte trykket.
   el.addEventListener('click', e => {
-    if (!justDragged) return;
-    justDragged = false;
+    if (performance.now() - dragEndAt > 350) return;
     e.stopPropagation();
     e.preventDefault();
   }, true);
@@ -2056,8 +2060,6 @@ function setupBandDrag(el) {
     const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
     stopIfPlaying();
     follow(beatAt(sX - d));
-    clearTimeout(snapTimer);
-    snapTimer = setTimeout(snap, 140);
     e.preventDefault();
     e.stopPropagation();
   }, { passive: false });
@@ -2066,7 +2068,7 @@ function setupBandDrag(el) {
 
 function setupStripDrag(el) {
   let down = false, moved = false, pid = null, start = 0, base = 0;
-  let justDragged = false, vertical = false, snapTimer = null;
+  let dragEndAt = -1e9, vertical = false, snapTimer = null;
   el.addEventListener('pointerdown', e => {
     vertical = curDir() === 'v';
     // Vannrett har egen rulling for berøring; loddrett må håndtere alt selv
@@ -2095,7 +2097,7 @@ function setupStripDrag(el) {
     down = false;
     el.classList.remove('grabbing');
     try { el.releasePointerCapture(pid); } catch (err) { /* ignorer */ }
-    justDragged = moved;
+    if (moved) dragEndAt = performance.now();
     if (moved && vertical) snapStripLane();
     moved = false;
   };
@@ -2104,8 +2106,7 @@ function setupStripDrag(el) {
   el.addEventListener('lostpointercapture', end);
   // Et dra skal ikke telle som et trykk på tonen man slapp over
   el.addEventListener('click', e => {
-    if (!justDragged) return;
-    justDragged = false;
+    if (performance.now() - dragEndAt > 350) return;
     e.stopPropagation();
     e.preventDefault();
   }, true);

@@ -35,8 +35,9 @@ bredden på hver tone er nøyaktig proporsjonal med hvor lenge den varer — så
 er før du kommer dit. Under avspilling glir båndet jevnt mot venstre gjennom hele sangen, mens
 spillehodet står stille på midten, rett under kortet som spilles. Kortene med grep hopper én tone om
 gangen, så du ser tydelig når neste grep treffer, mens notebildet flyter som musikken. Spilte toner
-dempes. Du kan trykke på en tone i båndet for å hoppe dit, eller **dra i båndet** for å spole — det er
-den korteste veien tilbake til begynnelsen, og kortene følger med. Musehjulet spoler på samme måte.
+dempes. Du kan trykke på en tone i båndet for å hoppe presist dit, eller **dra i båndet** for å spole — det er
+den korteste veien tilbake til begynnelsen, og kortene følger med. Linja blir liggende der du slipper
+den, med litt slark forbi første og siste tone, så den ikke stopper i en vegg. Musehjulet spoler likedan.
 
 ### Retning
 

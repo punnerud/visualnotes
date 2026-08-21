@@ -106,7 +106,7 @@ const REQUIRED = ['$', 'esc', 'clamp', 'T', 'openSheet', 'closeSheet', 'switchRo
   'renderStaffBand', 'renderLegend', 'instrName', 'updateHeader', 'paintBand', 'positionBand',
   'glideBand', 'makeCard', 'go', 'init', 'buildUrl', 'setSource', 'loadSong',
   'outputLatency', 'startCalibration', 'stopCalibration', 'calibratorRow', 'applyAudioOffset',
-  'setupBandDrag', 'indexAtBeat', 'beatAtBandOffset', 'setLanesFromBeat',
+  'setupBandDrag', 'indexAtBeat', 'beatAtBandOffset', 'setLanesFromBeat', 'selectOnly',
   'setInstrument', 'playPause', 'applyTempo', 'updateTempoBar', 'setupStripDrag', 'buildPrompt'];
 REQUIRED.forEach(f => {
   const n = f.replace('$', '\\$');
