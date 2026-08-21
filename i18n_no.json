@@ -102,6 +102,7 @@
   "air": "Luft mellom notene",
   "all": "Alle",
   "apply": "Bruk",
+  "audioAuto": "auto {n} ms, i alt {sum} ms",
   "audioOffset": "Lydforsinkelse",
   "audioOffsetSub": "Skyv opp hvis lyden ligger etter notene",
   "autoAdvance": "Automatisk bytte",

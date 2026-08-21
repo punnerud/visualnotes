@@ -102,6 +102,7 @@
   "air": "Space between notes",
   "all": "All",
   "apply": "Apply",
+  "audioAuto": "auto {n} ms, {sum} ms total",
   "audioOffset": "Audio delay",
   "audioOffsetSub": "Increase it if the sound lags behind the notes",
   "autoAdvance": "Auto-advance",

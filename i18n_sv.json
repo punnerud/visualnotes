@@ -102,6 +102,7 @@
   "air": "Luft mellan noterna",
   "all": "Alla",
   "apply": "Använd",
+  "audioAuto": "auto {n} ms, totalt {sum} ms",
   "audioOffset": "Ljudfördröjning",
   "audioOffsetSub": "Öka om ljudet ligger efter noterna",
   "autoAdvance": "Automatiskt byte",

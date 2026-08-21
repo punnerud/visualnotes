@@ -272,7 +272,11 @@ function setLanes(idxF, transition) {
 function positionStripLane(instant) {
   if (!$('vlane')) return;
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  vLaneStyle((instant || reduce) ? 'none' : 'transform .18s ease-out', vOffset(state.cur));
+  // Under avspilling snappes kortet på slaget. Med en mjuk overgang begynner det
+  // bare å bevege seg da, og lander et par hundredeler for sent — det leses som
+  // at lyden kommer før bildet.
+  const snap = instant || reduce || player.playing;
+  vLaneStyle(snap ? 'none' : 'transform .18s ease-out', vOffset(state.cur));
 }
 function freezeOne(id) {
   const lane = $(id);
@@ -588,8 +592,12 @@ function renderSettings() {
   b.appendChild(switchRow('ui.metronome', null, state.metronome, v => { state.metronome = v; saveState(); syncUrl(); }));
   b.appendChild(switchRow('ui.toneSound', null, state.tone, v => { state.tone = v; saveState(); syncUrl(); }));
   b.appendChild(switchRow('ui.countIn', null, state.countIn > 0, v => { state.countIn = v ? 4 : 0; saveState(); syncUrl(); }));
+  // Nettleserens eget anslag vises bare når lydmotoren er startet
+  const auto = AC ? Math.round(outputLatency(AC) * 1000) : null;
   b.appendChild(rangeRow('ui.audioOffset', -300, 300, 10, state.audioOffset,
-    v => (v > 0 ? '+' : '') + v + ' ms', applyAudioOffset));
+    v => (v > 0 ? '+' : '') + v + ' ms' +
+         (auto === null ? '' : ' · ' + T('ui.audioAuto', { n: auto, sum: auto + v })),
+    applyAudioOffset));
   b.appendChild(calibratorRow());
   b.appendChild(rangeRow('ui.air', 0, 1.6, 0.1, state.air, v => Math.round(v * 100) + ' %', v => { state.air = v; saveState(); renderStrip(); go(state.cur, true); }));
   b.appendChild(switchRow('ui.showFing', null, state.showFing, v => { state.showFing = v; saveState(); rebuildAll(); }));

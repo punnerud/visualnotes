@@ -102,6 +102,7 @@
   "air": "Luft mellem noderne",
   "all": "Alle",
   "apply": "Anvend",
+  "audioAuto": "auto {n} ms, i alt {sum} ms",
   "audioOffset": "Lydforsinkelse",
   "audioOffsetSub": "Skru op hvis lyden halter efter noderne",
   "autoAdvance": "Automatisk skift",
