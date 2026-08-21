@@ -415,19 +415,155 @@ function renderShare() {
   b.appendChild(err);
 }
 
+/* ---------------- AI-prompt ----------------
+   Én ferdig prompt: brukerens ønske på valgt språk, og beskrivelsen av
+   notasjonen på engelsk, som modellene håndterer best. */
+function promptBaseUrl() {
+  if (location.protocol === 'file:') return 'https://punnerud.github.io/visualnotes/';
+  return location.origin + location.pathname;
+}
+function midiName(m) {
+  const n = spellMidi(m);
+  return n.letter + (n.alt > 0 ? '#' : n.alt < 0 ? 'b' : '') + n.oct;
+}
+function enName(id) { return (I18N.en && I18N.en.instruments && I18N.en.instruments[id]) || id; }
+function instrCatalog() {
+  return INSTR_GROUP_ORDER.map(g => {
+    const list = INSTRUMENTS.filter(x => x.group === g).map(x => `${x.id} (${enName(x.id)})`).join(', ');
+    return '  ' + g + ': ' + list;
+  }).join('\n');
+}
+function buildPrompt(wish) {
+  const ins = curInstr();
+  const r = chartRange(ins);
+  const w = (wish || '').trim() || T('ui.aiWishDefault');
+  const intro = T('ui.aiIntro', { wish: w });
+  const spec =
+`--- REFERENCE: how a visualnotes link is built (English) ---
+
+Base URL: ${promptBaseUrl()}
+Everything is a query parameter. Working example:
+${promptBaseUrl()}?s=C4+D+E+F+G:2+G:2+|+A*4+G:4&t=Lisa+gikk+til+skolen&i=tromp_bb&l=${state.lang}&ts=4/4&bpm=100
+
+s=    the melody: one token per note, separated by spaces (write spaces as + in the URL).
+      Pitch     C4  D  E  F#4  Bb3  Ciss  Hess  do re mi
+                Both H and B mean B natural. B flat is written Bb (or Hess).
+      Octave    the digit after the letter, C4 = middle C. Leave it out and the note nearest the
+                previous one is chosen, unless that leap is larger than a fifth.
+      Length    append ":" and the number of beats. C:2 = half note, C:.5 = eighth,
+                C:1.5 = dotted quarter. Named values work too: :w :h :q :e :s, and a trailing
+                dot means dotted (:q.). A token without ":" is one beat (a quarter note).
+      Rest      -   with a length like -:2
+      Repeat    A*4 repeats that token four times
+      Phrase    |   small gap between phrases;  || also breaks the line when printing
+      Tie       C~ C  joins two notes of the same pitch into one longer note
+v=    alternative to s= for 3-valve brass: valve numbers, e.g. 0 13 12 1 0 0 12*4
+t=    title shown at the top
+i=    instrument id (list below)
+l=    interface language: no, sv, da or en
+ts=   time signature, e.g. 4/4, 3/4, 6/8        up=  upbeat (pickup) in beats
+bpm=  tempo, 30-240                             k=   transpose everything n semitones
+p=    w (default) means the tokens are exactly what the player reads on the chosen instrument.
+      p=c means the tokens are concert pitch and get transposed for each instrument.
+w=    optional lyric syllables, one per note, separated by |
+auto=1 starts playback, met=0 turns the metronome off, tone=0 turns the sound off
+
+Rules to follow:
+- Every bar must add up: the note lengths between two bar boundaries must equal the time signature.
+- Keep the melody inside the instrument's written range, or it is shown without a fingering.
+- Encode spaces as + and leave : | * - ~ # as they are.
+- Return one single URL on one line.
+
+Currently chosen (keep unless I ask for something else):
+  i=${ins.id} — ${enName(ins.id)}, ${ins.clef} clef, written range ${midiName(r.lo)}-${midiName(r.hi)}${ins.fing ? '' : ' (no fingering chart)'}
+  l=${state.lang}   ts=${state.ts}   bpm=${state.bpm}
+
+Instrument ids:
+${instrCatalog()}`;
+  return intro + '\n\n' + spec + '\n';
+}
+function renderAi() {
+  $('aiTitle').textContent = T('ui.ai');
+  const b = $('aiBody');
+  b.innerHTML = '';
+  const h = document.createElement('div');
+  h.className = 'row';
+  h.innerHTML = `<label>${esc(T('ui.aiWish'))}</label>`;
+  b.appendChild(h);
+  const ta = document.createElement('textarea');
+  ta.placeholder = T('ui.aiPlaceholder');
+  ta.value = state.aiWish || '';
+  ta.style.minHeight = '64px';
+  ta.spellcheck = false;
+  b.appendChild(ta);
+
+  const box = document.createElement('div');
+  box.className = 'urlbox prompt';
+  b.appendChild(box);
+  const paint = () => { state.aiWish = ta.value; box.textContent = buildPrompt(ta.value); };
+  ta.addEventListener('input', paint);
+  paint();
+
+  const row = document.createElement('div');
+  row.className = 'btnrow';
+  const copy = document.createElement('button');
+  copy.className = 'gold';
+  copy.textContent = T('ui.aiCopy');
+  copy.addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(box.textContent); copy.textContent = T('ui.copied'); }
+    catch (e) { copy.textContent = T('ui.copyFail'); }
+    setTimeout(() => { copy.textContent = T('ui.aiCopy'); }, 1600);
+  });
+  row.appendChild(copy);
+  b.appendChild(row);
+  const hint = document.createElement('p');
+  hint.className = 'hint';
+  hint.style.textAlign = 'left';
+  hint.textContent = T('ui.aiHint');
+  b.appendChild(hint);
+}
+
 /* ---------------- Tempolinje ---------------- */
-const BPM_MIN = 30, BPM_MAX = 240, BPM_STEP = 4;
+const BPM_MIN = 30, BPM_MAX = 240, BPM_STEP = 10;
+// Hopper til nærmeste runde tempo, slik at man lander på 100 og 120 og ikke 104
+function steppedTempo(dir) {
+  const b = state.bpm;
+  return dir > 0 ? Math.floor(b / BPM_STEP) * BPM_STEP + BPM_STEP
+                 : Math.ceil(b / BPM_STEP) * BPM_STEP - BPM_STEP;
+}
 function updateTempoBar() {
+  $('bpmNum').textContent = state.bpm;
   const v = $('bpmVal');
-  const def = state.bpmDefault;
-  v.innerHTML = `<b>${state.bpm}</b><span>BPM</span>` +
-    (def && def !== state.bpm ? `<em>↺ ${T('ui.tempoDefault', { n: def })}</em>` : '');
-  v.title = def ? T('ui.tempoDefault', { n: def }) : '';
   v.setAttribute('aria-label', T('ui.tempo') + ': ' + state.bpm + ' BPM');
+  v.title = T('ui.tempoExact');
+  const def = state.bpmDefault;
+  const rst = $('bpmReset');
+  rst.hidden = !def || def === state.bpm;
+  rst.textContent = '↺ ' + def;
+  rst.title = T('ui.tempoDefault', { n: def });
+  rst.setAttribute('aria-label', T('ui.tempoDefault', { n: def }));
   $('bpmM').disabled = state.bpm <= BPM_MIN;
   $('bpmP').disabled = state.bpm >= BPM_MAX;
   $('bpmM').setAttribute('aria-label', T('ui.slower'));
   $('bpmP').setAttribute('aria-label', T('ui.faster'));
+}
+/* Trykk på tallet: skriv inn nøyaktig tempo */
+function editTempo() {
+  const inp = $('bpmInput');
+  if (!inp.hidden) return;
+  $('bpmVal').hidden = true;
+  inp.hidden = false;
+  inp.value = state.bpm;
+  inp.focus();
+  inp.select();
+}
+function commitTempo(save) {
+  const inp = $('bpmInput');
+  if (inp.hidden) return;
+  const v = parseInt(inp.value, 10);
+  inp.hidden = true;
+  $('bpmVal').hidden = false;
+  if (save && !isNaN(v)) applyTempo(v); else updateTempoBar();
 }
 /* Nytt tempo: fortsetter fra tonen man står på hvis det spilles nå. */
 function applyTempo(bpm) {

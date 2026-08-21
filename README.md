@@ -26,8 +26,9 @@ URL, so an LLM can generate a link. Four languages, no build step in the browser
 Innstillinger (⚙) husker språk, instrument, lyd og utskriftsvalg i en cookie i ett år. Alt du endrer
 speiles i URL-en, så lenken i adressefeltet er alltid den du kan dele.
 
-**Tempo** justeres rett over avspillingsknappen. Trykk på tallet for å gå tilbake til melodiens eget
-tempo — endrer du tempo mens den spiller, fortsetter den i det nye tempoet fra tonen du står på.
+**Tempo** justeres rett over avspillingsknappen: − og + hopper til nærmeste runde ti, og trykker du på
+tallet kan du skrive inn et nøyaktig tempo. `↺` ved siden av setter det tilbake til melodiens eget.
+Endrer du tempo mens den spiller, fortsetter den i det nye tempoet fra tonen du står på.
 ▶ spiller alltid fra første tone. Tonerekka kan dras sidelengs med musa, og hjulet blar vannrett.
 
 **Utskrift** (🖨) viser arket i faktisk størrelse med de samme margene som skrives ut, så
@@ -105,7 +106,12 @@ Ligger sangen utenfor instrumentets grepskart, flyttes den automatisk i hele okt
 
 ## Prompt til en LLM
 
-Kopier dette inn hos en språkmodell for å få en ferdig lenke:
+Enklest: trykk 🤖 øverst i appen, skriv hva du vil ha, og kopier den ferdige prompten. Den er på
+språket du har valgt, tar med hvilket instrument, tempo og taktart som er valgt nå, og legger ved hele
+notasjonsbeskrivelsen på engelsk. Lim den inn hos ChatGPT, Claude eller Gemini — gjerne sammen med et
+bilde eller en PDF av noten — og du får en ferdig lenke tilbake.
+
+Vil du skrive den selv:
 
 > Lag en URL til https://punnerud.github.io/visualnotes/ som viser melodien til «\<sang\>».
 > Bruk parameteren `s=` med ett ord per tone: bokstav + valgfritt oktavtall (`C4`, `F#4`, `Bb3`),

@@ -4,6 +4,7 @@
     <div class="tb-title" id="tbTitle">♪</div>
     <div class="tb-meta" id="tbMeta"></div>
   </div>
+  <button class="iconbtn" id="openAi" title="AI">🤖</button>
   <button class="iconbtn" id="openSongs" title="Sanger">♫</button>
   <button class="iconbtn" id="openShare" title="Del">🔗</button>
   <button class="iconbtn" id="openSettings" title="Innstillinger">⚙</button>
@@ -22,7 +23,9 @@
   <div class="crow">
     <div class="tempo">
       <button class="tstep" id="bpmM">−</button>
-      <button class="tval" id="bpmVal"><b>100</b><span>BPM</span></button>
+      <button class="tval" id="bpmVal"><b id="bpmNum">100</b><span>BPM</span></button>
+      <input class="tinput" id="bpmInput" type="number" inputmode="numeric" min="30" max="240" step="1" hidden>
+      <button class="treset" id="bpmReset" hidden>↺</button>
       <button class="tstep" id="bpmP">+</button>
     </div>
   </div>
@@ -48,6 +51,14 @@
     <div class="sheet-head"><h2 id="songsTitle">Sanger</h2><button class="iconbtn" data-close="songs">✕</button></div>
     <div class="songlist" id="songList"></div>
     <p class="hint" id="songsNote"></p>
+  </div>
+</div>
+
+<!-- AI-prompt -->
+<div class="sheet" id="ai" hidden>
+  <div class="sheet-inner">
+    <div class="sheet-head"><h2 id="aiTitle">AI-prompt</h2><button class="iconbtn" data-close="ai">✕</button></div>
+    <div id="aiBody"></div>
   </div>
 </div>
 

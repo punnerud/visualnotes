@@ -13,7 +13,7 @@ const PERSIST = ['lang', 'instrId', 'naming', 'pitchMode', 'recorderGerman', 'bp
                  'pRows', 'pZoom', 'pLand'];
 const state = Object.assign({}, DEFAULTS, {
   title: '', songId: null, sourceText: '', events: [], cur: 0, words: null, parseErrors: [],
-  transposeLocked: false, bpmDefault: 100,
+  transposeLocked: false, bpmDefault: 100, aiWish: '',
 });
 
 function readCookie() {
@@ -245,9 +245,16 @@ function init() {
   $('prev').addEventListener('click', () => { stopIfPlaying(); go(state.cur - 1); });
   $('next').addEventListener('click', () => { stopIfPlaying(); go(state.cur + 1); });
   $('playBtn').addEventListener('click', playPause);
-  $('bpmM').addEventListener('click', () => applyTempo(state.bpm - BPM_STEP));
-  $('bpmP').addEventListener('click', () => applyTempo(state.bpm + BPM_STEP));
-  $('bpmVal').addEventListener('click', () => applyTempo(state.bpmDefault));
+  $('bpmM').addEventListener('click', () => applyTempo(steppedTempo(-1)));
+  $('bpmP').addEventListener('click', () => applyTempo(steppedTempo(1)));
+  $('bpmVal').addEventListener('click', editTempo);
+  $('bpmReset').addEventListener('click', () => applyTempo(state.bpmDefault));
+  $('bpmInput').addEventListener('blur', () => commitTempo(true));
+  $('bpmInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); commitTempo(true); }
+    else if (e.key === 'Escape') { e.preventDefault(); commitTempo(false); }
+  });
+  $('openAi').addEventListener('click', () => { renderAi(); openSheet('ai'); });
   $('openSettings').addEventListener('click', () => { renderSettings(); openSheet('settings'); });
   $('openSongs').addEventListener('click', () => { renderSongs(); openSheet('songs'); });
   $('openShare').addEventListener('click', () => { renderShare(); openSheet('share'); });
