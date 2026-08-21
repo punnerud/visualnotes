@@ -2521,15 +2521,14 @@ s=    the melody, comma separated: C4,D,E,F,G
       Rest      -   with a length like "-:h"
       Repeat    the count goes straight after the length, with nothing in between:
                 "A:e4" is four eighth notes, "A:q4" four quarters, "-:h2" two half rests.
-                Use it — it keeps the link short. Never write "*": some apps strip it when the
-                link is pasted, and the notes are then lost.
+                Use it — it keeps the link short. ("A:e*4" is also understood, but is longer.)
       Phrase    /   a small gap between phrases;  // also breaks the line when printing.
                 Do NOT put one at every bar line: bar lines come from ts= by themselves.
       Tie       C~,C  joins two notes of the same pitch into one longer note
 
       Keep the link short and use only these characters: letters, digits and , : . - /
-      They are all legal in a URL, so the link survives being pasted into notes and chat apps.
-      Do not use spaces, "+" or "|". Example of a good, compact melody:
+      None of them need percent-encoding, so the link stays short and readable when pasted into
+      notes and chat apps. Avoid spaces, "+", "|" and "#". Example of a good, compact melody:
         s=C4,D,E,F,G:h2/A:q4,G:w/F*4,E:h*2/D*4,C:w
 
 v=    alternative to s= for 3-valve brass: valve numbers, e.g. 0 13 12 1 0 0 12*4

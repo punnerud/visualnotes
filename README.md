@@ -116,10 +116,10 @@ A:e4                                       gjenta: tallet henger rett på lengde
 C~,C                                       bindebue: slås sammen til én lengre tone
 ```
 
-Alt appen selv skriver bruker bare **bokstaver, tall og `, : . - /`** — tegn som er lovlige i en URL.
-Det gjør lenken kortere og robust når den limes inn i notat- og meldingsapper. `#`, `|` og `*` godtas
-fortsatt når du skriver selv, men `#` og `|` må prosentkodes i en lenke, og `*` blir strøket av enkelte
-apper — derfor skrives gjentakelse som `A:e4` og ikke `A:e*4`.
+Alt appen selv skriver bruker bare **bokstaver, tall og `, : . - /`** — tegn som ikke trenger
+prosentkoding i en URL. Det holder lenken kort og lesbar. `#`, `|` og `*` godtas fortsatt når du
+skriver selv, men `#` og `|` blir til `%23` og `%7C` i en lenke, som gjør den lengre og styggere.
+Gjentakelse skrives derfor `A:e4`, som både er kortest og er formen språkmodeller skriver av seg selv.
 
 **`B` og `H` betyr begge h/B♮.** B♭ skrives `Bb`, `Hes` eller `Hess`. Ellers forstås både engelsk
 (`F#`, `Bb`), nordisk/tysk (`Fiss`, `Fis`, `Ess`, `As`) og solfège (`do re mi fa sol la si`), og
