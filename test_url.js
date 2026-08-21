@@ -73,4 +73,40 @@ eq(sc.total, 2, 'fire slag i 120 BPM = 2 sekunder');
 eq(sc.notes.map(n => +n.t.toFixed(3)).join(' '), '0 0.5 1.5', 'starttider');
 eq(sc.clicks.filter(x => x.accent).length, 1, 'ett aksentert slag i én takt');
 
+
+/* --- kompakt, URL-trygt format --- */
+eq(c.parseSong('C4/D//E').events.map(e => e.phrase).join(''), '012', 'skråstrek er frasemerke');
+eq(c.parseSong('C4,D,E').events.length, 3, 'komma skiller toner');
+eq(c.parseNoteName('Fis4'), { letter: 'F', alt: 1, oct: 4 }, 'is er kryss');
+eq(c.parseNoteName('Fiss4'), { letter: 'F', alt: 1, oct: 4 }, 'iss er kryss');
+eq(c.parseSong('C4,Cis,D').events.map(e => e.midi).join(' '), '60 61 62', 'kryss i rekke');
+
+const compact = c.songToTokens(c.parseSong('C4 D E F G:2 G:2 | A*4 G:4').events);
+eq(compact, 'C4,D,E,F,G:h*2/A*4,G:w', 'kompakt form');
+ok(compact.indexOf(':q') < 0, 'firedeler skrives uten lengde');
+ok(compact.indexOf('+') < 0 && compact.indexOf('|') < 0, 'ingen + eller |');
+
+// bare tegn som er lovlige i en URL
+const SAFE = /^[A-Za-z0-9,:.\-*/]+$/;
+c.SONGS.forEach(song => {
+  const out = c.songToTokens(c.parseSong(song.s).events);
+  ok(SAFE.test(out), `${song.id}: utrygge tegn i "${out.slice(0, 40)}"`);
+  ok(out === encodeURIComponent(out).replace(/%2C/g, ',').replace(/%2F/g, '/').replace(/%3A/g, ':'),
+    `${song.id}: må prosentkodes`);
+  // tur-retur skal gi nøyaktig samme melodi
+  const key = r => r.events.map(e => (e.rest ? '-' : e.letter + e.alt + e.oct) + ':' + e.beats + ':' + (e.phrase || 0)).join(' ');
+  eq(key(c.parseSong(out)), key(c.parseSong(song.s)), `${song.id}: tur-retur`);
+  ok(out.length <= song.s.length, `${song.id}: ${out.length} tegn mot ${song.s.length} før`);
+});
+
+// slik en språkmodell gjerne skriver det: full oktav og lengde på hver tone
+const verbose = 'A4:0.5 A4:0.5 A4:0.5 A4:0.5 | B4:0.5 B4:0.5 B4:0.5 A4:0.5 | ' +
+                'A#4:0.5 C5:0.5 | D5:1.5 C5:0.5 | G4:0.25 F4:0.25 E4:0.25 D4:0.25';
+const short = c.songToTokens(c.parseSong(verbose).events);
+const key = r => r.events.map(e => (e.rest ? '-' : e.letter + e.alt + e.oct) + ':' + e.beats).join(' ');
+eq(key(c.parseSong(short)), key(c.parseSong(verbose)), 'ordrik form gir samme melodi');
+ok(short.length < verbose.length * 0.55,
+   `for lite innkorting: ${short.length} mot ${verbose.replace(/ /g, '+').length}`);
+console.log(`  ordrik lenke: ${verbose.replace(/ /g, '+').length} → ${short.length} tegn`);
+
 done('test_url');

@@ -2,6 +2,16 @@
    URL-format: tolking og bygging
    Ren logikk uten DOM — testes med node.
    ================================================================ */
+/* Frasemerket skrives «/», men «|» godtas fortsatt. Komma og mellomrom
+   skiller tonene. Alle tegnene i det vi selv skriver er lovlige i en URL,
+   slik at lenken overlever å bli limt inn i notat- og meldingsapper. */
+function splitTokens(str) {
+  return String(str || '')
+    .replace(/,/g, ' ')
+    .replace(/\|\||\/\//g, ' §§ ')
+    .replace(/[|/]/g, ' § ')
+    .split(/\s+/).filter(Boolean);
+}
 const SOLFEGE = { do: 'C', ut: 'C', re: 'D', 'ré': 'D', mi: 'E', fa: 'F', sol: 'G', so: 'G', la: 'A', si: 'B', ti: 'B' };
 const DUR_NAMES = { w: 4, h: 2, q: 1, e: 0.5, s: 0.25, t: 0.125 };
 
@@ -58,14 +68,28 @@ function parseNoteName(raw) {
   }
   return { letter, alt, oct };
 }
+/* Oktaven når den ikke er oppgitt: samme oktavtall som forrige tone hvis
+   spranget er en kvint eller mindre, ellers nærmeste tone. Brukes både når vi
+   tolker og når vi skriver, så de to alltid er enige. */
+function inferOctave(letter, alt, prev, startOct) {
+  if (!prev) return startOct;
+  let oct = prev.oct;
+  const d = noteMidi({ letter, alt, oct }) - noteMidi(prev);
+  if (Math.abs(d) > 7) {
+    let dd = d;
+    while (dd > 6) { oct--; dd -= 12; }
+    while (dd < -6) { oct++; dd += 12; }
+  }
+  return oct;
+}
+
 /* Tolker en tonerekke. Returnerer {events, errors} */
 function parseSong(str, opts) {
   const o = opts || {};
   const startOct = o.startOct === undefined ? 4 : o.startOct;
   const events = [], errors = [];
   if (!str) return { events, errors };
-  const raw = String(str).replace(/,/g, ' ').replace(/\|\|/g, ' §§ ').replace(/\|/g, ' § ');
-  const tokens = raw.split(/\s+/).filter(Boolean);
+  const tokens = splitTokens(str);
   let prev = null, pendingPhrase = 0, pendingTie = false, lastTok = null;
   for (const tok0 of tokens) {
     if (tok0 === '§') { pendingPhrase = Math.max(pendingPhrase, 1); continue; }
@@ -94,21 +118,7 @@ function parseSong(str, opts) {
     } else {
       const n = parseNoteName(tok);
       if (!n) { errors.push(tok0); continue; }
-      let oct = n.oct;
-      if (oct === null) {
-        if (!prev) oct = startOct;
-        else {
-          // Samme oktavtall som forrige tone når spranget er en kvint eller mindre,
-          // ellers nærmeste tone. Gjør "C G" til en kvint opp, men "C B" til en sekund ned.
-          oct = prev.oct;
-          const d = noteMidi({ letter: n.letter, alt: n.alt, oct }) - noteMidi(prev);
-          if (Math.abs(d) > 7) {
-            let dd = d;
-            while (dd > 6) { oct--; dd -= 12; }
-            while (dd < -6) { oct++; dd += 12; }
-          }
-        }
-      }
+      const oct = n.oct === null ? inferOctave(n.letter, n.alt, prev, startOct) : n.oct;
       ev = { rest: false, letter: n.letter, alt: n.alt, oct, beats };
       prev = { letter: n.letter, alt: n.alt, oct };
     }
@@ -149,9 +159,8 @@ function parseValves(str, opts) {
   const idx = valveIndex();
   const events = [], errors = [];
   let cur = o.startMidi === undefined ? 60 : o.startMidi;
-  const raw = String(str || '').replace(/,/g, ' ').replace(/\|\|/g, ' §§ ').replace(/\|/g, ' § ');
   let pendingPhrase = 0;
-  for (const tok0 of raw.split(/\s+/).filter(Boolean)) {
+  for (const tok0 of splitTokens(str)) {
     if (tok0 === '§') { pendingPhrase = Math.max(pendingPhrase, 1); continue; }
     if (tok0 === '§§') { pendingPhrase = 2; continue; }
     let tok = tok0, repeat = 1, beats = 1;
@@ -178,30 +187,45 @@ function parseValves(str, opts) {
   events.forEach(e => { const g = glyphFor(e.beats); e.dur = g.dur; e.dot = g.dot; });
   return { events, errors };
 }
-/* Bygger tonerekke-tekst fra hendelser */
-function songToTokens(events, naming) {
+/* Bygger en kompakt tonerekke av hendelsene. Kortest mulig, og bare med tegn
+   som er lovlige i en URL: bokstaver, tall og , : . - * /
+   Firedeler skrives uten lengde, oktavtall utelates når de kan gjettes,
+   kryss skrives «is» (ikke «#», som må prosentkodes) og like naboer pakkes til A*4. */
+const DUR_TOKENS = [[4, 'w'], [2, 'h'], [1, 'q'], [0.5, 'e'], [0.25, 's'], [0.125, 't']];
+function durToken(beats) {
+  if (Math.abs(beats - 1) < 1e-9) return '';
+  for (const [v, n] of DUR_TOKENS) {
+    if (Math.abs(beats - v) < 1e-9) return ':' + n;
+    if (Math.abs(beats - v * 1.5) < 1e-9) return ':' + n + '.';
+    if (Math.abs(beats - v * 1.75) < 1e-9) return ':' + n + '..';
+  }
+  return ':' + (+beats.toFixed(4));
+}
+function noteToken(e, prev, startOct) {
+  const acc = e.alt > 0 ? 'is'.repeat(e.alt) : 'b'.repeat(-e.alt);
+  // Første tone skrives alltid med oktav, så lenken forteller selv hvor den ligger
+  const guess = prev ? inferOctave(e.letter, e.alt, prev, startOct) : null;
+  return e.letter + acc + (guess === e.oct ? '' : e.oct);
+}
+function songToTokens(events, startOct) {
+  const so = startOct === undefined ? 4 : startOct;
   const out = [];
-  let prevMidi = null;
+  let prev = null;
   for (const e of events) {
-    if (e.phrase === 2) out.push('||'); else if (e.phrase === 1) out.push('|');
-    let t;
-    if (e.rest) t = '-';
-    else {
-      const needOct = prevMidi === null || Math.abs(e.midi - prevMidi) > 6;
-      t = e.letter + (e.alt > 0 ? '#'.repeat(e.alt) : 'b'.repeat(-e.alt)) + (needOct ? e.oct : '');
-      prevMidi = e.midi;
-    }
-    if (Math.abs(e.beats - 1) > 1e-9) t += ':' + (+e.beats.toFixed(4));
-    out.push(t);
+    if (e.phrase === 2) out.push('//'); else if (e.phrase === 1) out.push('/');
+    if (e.rest) { out.push('-' + durToken(e.beats)); continue; }
+    out.push(noteToken(e, prev, so) + durToken(e.beats));
+    prev = { letter: e.letter, alt: e.alt, oct: e.oct };
   }
   // slå sammen like naboer til A*n
   const packed = [];
   for (const t of out) {
     const p = packed[packed.length - 1];
-    if (p && p.t === t && t !== '|' && t !== '||') { p.n++; continue; }
+    if (p && p.t === t && t !== '/' && t !== '//') { p.n++; continue; }
     packed.push({ t, n: 1 });
   }
-  return packed.map(p => p.n > 1 ? p.t + '*' + p.n : p.t).join(' ');
+  return packed.map(p => (p.n > 1 ? p.t + '*' + p.n : p.t))
+    .join(',').replace(/,(\/+),/g, '$1').replace(/^(\/+),/, '$1');
 }
 /* Taktart "4/4" -> taktslag per takt */
 function barBeats(ts) {

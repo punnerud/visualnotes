@@ -157,7 +157,7 @@ function buildUrl() {
     .replace(/%20/g, '+').replace(/%3A/g, ':').replace(/%7C/g, '|')
     .replace(/%2C/g, ',').replace(/%2F/g, '/'));
   if (state.songId) add('id', state.songId);
-  else add('s', state.sourceText);
+  else add('s', songToTokens(state.events));
   if (state.title && (!state.songId || state.title !== (SONG_BY_ID[state.songId].title[state.lang] || ''))) add('t', state.title);
   add('i', state.instrId);
   add('l', state.lang);

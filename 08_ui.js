@@ -713,6 +713,13 @@ function renderShare() {
   const box = document.createElement('div');
   box.className = 'urlbox'; box.textContent = url;
   b.appendChild(box);
+  if (url.length > 180) {
+    const warn = document.createElement('p');
+    warn.className = 'warn';
+    warn.style.textAlign = 'left';
+    warn.textContent = T('ui.longUrl', { n: url.length });
+    b.appendChild(warn);
+  }
   const row = document.createElement('div');
   row.className = 'btnrow';
   const copy = document.createElement('button');
@@ -804,18 +811,26 @@ Base URL: ${promptBaseUrl()}
 Everything is a query parameter. Working example:
 ${promptBaseUrl()}?s=C4+D+E+F+G:2+G:2+|+A*4+G:4&t=Lisa+gikk+til+skolen&i=tromp_bb&l=${state.lang}&ts=4/4&bpm=100
 
-s=    the melody: one token per note, separated by spaces (write spaces as + in the URL).
-      Pitch     C4  D  E  F#4  Bb3  Ciss  Hess  do re mi
-                Both H and B mean B natural. B flat is written Bb (or Hess).
+s=    the melody, comma separated: C4,D,E,F,G
+      Pitch     C4  D  E  Fis4  Bb3  Ciss  Hess  do re mi
+                Sharps are written "is" (Fis, Ciss) and flats "b" (Bb, Eb). A "#" also works but has
+                to be percent-encoded in a link, so prefer "is". Both H and B mean B natural.
       Octave    the digit after the letter, C4 = middle C. Leave it out and the note nearest the
-                previous one is chosen, unless that leap is larger than a fifth.
-      Length    append ":" and the number of beats. C:2 = half note, C:.5 = eighth,
-                C:1.5 = dotted quarter. Named values work too: :w :h :q :e :s, and a trailing
-                dot means dotted (:q.). A token without ":" is one beat (a quarter note).
-      Rest      -   with a length like -:2
-      Repeat    A*4 repeats that token four times
-      Phrase    |   small gap between phrases;  || also breaks the line when printing
-      Tie       C~ C  joins two notes of the same pitch into one longer note
+                previous one is chosen, unless that leap is larger than a fifth. Write it only when
+                the melody jumps.
+      Length    a quarter note needs nothing at all. Otherwise ":w" whole, ":h" half, ":e" eighth,
+                ":s" sixteenth, a trailing dot for dotted (":q." ":e."), or a number of beats (":1.5").
+      Rest      -   with a length like "-:h"
+      Repeat    A*4 repeats that token four times — use it, it keeps the link short
+      Phrase    /   a small gap between phrases;  // also breaks the line when printing.
+                Do NOT put one at every bar line: bar lines come from ts= by themselves.
+      Tie       C~,C  joins two notes of the same pitch into one longer note
+
+      Keep the link short and use only these characters: letters, digits and , : . - * /
+      They are all legal in a URL, so the link survives being pasted into notes and chat apps.
+      Do not use spaces, "+" or "|". Example of a good, compact melody:
+        s=C4,D,E,F,G:h*2/A*4,G:w/F*4,E:h*2/D*4,C:w
+
 v=    alternative to s= for 3-valve brass: valve numbers, e.g. 0 13 12 1 0 0 12*4
 t=    title shown at the top
 i=    instrument id (list below)
