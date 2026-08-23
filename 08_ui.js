@@ -589,7 +589,7 @@ function segRow(labelKey, options, value, onPick, subKey) {
   row.appendChild(seg);
   return row;
 }
-function rangeRow(labelKey, min, max, step, value, fmtFn, onInput) {
+function rangeRow(labelKey, min, max, step, value, fmtFn, onInput, peek) {
   const row = document.createElement('div');
   row.className = 'row';
   row.innerHTML = `<label>${esc(T(labelKey))}<span class="sub" data-v>${esc(fmtFn(value))}</span></label>`;
@@ -600,8 +600,42 @@ function rangeRow(labelKey, min, max, step, value, fmtFn, onInput) {
     row.querySelector('[data-v]').textContent = fmtFn(v);
     onInput(v);
   });
+  if (peek) attachPeek(row, inp);
   row.appendChild(inp);
   return row;
+}
+
+/* Panelet blir nesten gjennomsiktig mens man drar i en størrelse, så man ser
+   det man justerer. Raden man holder i blir stående, ellers ser man ikke tallet.
+   Et halvt sekund etter at man slipper, kommer menyen tilbake. */
+let peekTimer = null;
+function attachPeek(row, inp) {
+  const sheet = () => row.closest('.sheet');
+  let held = false;
+  const on = () => {
+    const sh = sheet();
+    if (!sh) return;
+    clearTimeout(peekTimer);
+    sh.classList.add('peek');
+    row.classList.add('peeking');
+  };
+  const off = () => {
+    clearTimeout(peekTimer);
+    peekTimer = setTimeout(() => {
+      const sh = sheet();
+      if (!sh) return;
+      sh.classList.remove('peek');
+      row.classList.remove('peeking');
+    }, 500);
+  };
+  inp.addEventListener('pointerdown', () => { held = true; on(); });
+  inp.addEventListener('input', () => { on(); if (!held) off(); });
+  inp.addEventListener('keydown', () => { held = false; on(); });
+  const release = () => { if (!held) return; held = false; off(); };
+  inp.addEventListener('pointerup', release);
+  inp.addEventListener('pointercancel', release);
+  window.addEventListener('pointerup', release);
+  inp.addEventListener('blur', () => { held = false; off(); });
 }
 function renderSettings() {
   stopCalibration();          // prikkene tegnes på nytt, så kalibratoren må stoppe
@@ -681,10 +715,11 @@ function renderSettings() {
          (auto === null ? '' : ' · ' + T('ui.audioAuto', { n: auto, sum: auto + v })),
     applyAudioOffset));
   b.appendChild(calibratorRow());
-  b.appendChild(rangeRow('ui.air', 0, 1.6, 0.1, state.air, v => Math.round(v * 100) + ' %', v => { state.air = v; saveState(); renderStrip(); go(state.cur, true); }));
+  b.appendChild(rangeRow('ui.air', 0, 1.6, 0.1, state.air, v => Math.round(v * 100) + ' %',
+    v => { state.air = v; saveState(); rebuildAll(); }, true));
   b.appendChild(rangeRow('ui.fingSize', 0, 100, 5, state.fingSize,
     v => (v === 0 ? T('ui.off') : v + ' %'),
-    v => { state.fingSize = Math.round(v); saveState(); rebuildAll(); syncUrl(); }));
+    v => { state.fingSize = Math.round(v); saveState(); rebuildAll(); syncUrl(); }, true));
   b.appendChild(switchRow('ui.showBars', null, state.showBars, v => { state.showBars = v; saveState(); rebuildAll(); }));
   b.appendChild(switchRow('ui.showOct', null, state.showOct, v => { state.showOct = v; saveState(); rebuildAll(); }));
 

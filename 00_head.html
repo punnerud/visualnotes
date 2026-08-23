@@ -189,17 +189,27 @@
   .counter b{display:block;font-size:22px;color:var(--gold);line-height:1.1}
 
   /* ---------- Panel ---------- */
-  .sheet{position:fixed;inset:0;z-index:40;display:flex;align-items:flex-end;justify-content:center;background:rgba(10,14,26,.62)}
+  .sheet{position:fixed;inset:0;z-index:40;display:flex;align-items:flex-end;justify-content:center;
+    background:rgba(10,14,26,.62);transition:background .2s ease}
   .sheet[hidden]{display:none}
   .sheet-inner{
-    width:min(640px,100%);max-height:86vh;overflow:auto;
+    width:min(640px,100%);max-height:86vh;overflow:auto;transition:background .2s ease;
     background:var(--navy-deep);border-radius:22px 22px 0 0;
     border:1px solid rgba(251,247,238,.16);border-bottom:0;
     padding:16px 16px calc(20px + env(safe-area-inset-bottom));
   }
-  .sheet-head{display:flex;align-items:center;gap:10px;margin-bottom:12px;position:sticky;top:-16px;background:var(--navy-deep);padding-top:4px;z-index:1}
+  .sheet-head{display:flex;align-items:center;gap:10px;margin-bottom:12px;position:sticky;top:-16px;
+    background:var(--navy-deep);padding-top:4px;z-index:1;transition:opacity .2s ease,background .2s ease}
+  /* Mens man drar i en størrelse: bare raden man holder i blir stående */
+  .sheet.peek{background:transparent}
+  .sheet.peek .sheet-inner{background:transparent;border-color:transparent;box-shadow:none}
+  .sheet.peek .sheet-head{background:transparent;opacity:.1}
+  .sheet.peek .row,.sheet.peek .hint,.sheet.peek .btnrow,.sheet.peek .urlbox,
+  .sheet.peek textarea,.sheet.peek .songlist{opacity:.1}
+  .sheet.peek .row.peeking{opacity:1}
   .sheet-head h2{flex:1;font-size:17px;font-weight:800}
-  .row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid rgba(251,247,238,.1)}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 0;
+    border-bottom:1px solid rgba(251,247,238,.1);transition:opacity .2s ease}
   .row:last-child{border-bottom:0}
   .row label{font-size:14px;font-weight:700}
   .row .sub{display:block;font-size:11.5px;font-weight:600;color:var(--sky);opacity:.8;margin-top:2px}

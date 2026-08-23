@@ -66,8 +66,9 @@ klikket høres. Verdien huskes per enhet.
 full størrelse til bare en liten påminnelse over bokstaven — og til slutt av, så bare notene står igjen.
 Kortene blir både lavere og smalere med, så flere toner er synlige og notebåndet får mer plass etter
 hvert som eleven trenger grepene mindre — på piano går kortet fra 330 til 166 piksler mellom 100 % og
-30 %. Verdien
-kan deles i lenken med `fs=`, for eksempel [`?id=lisa&fs=40`](https://punnerud.github.io/visualnotes/?id=lisa&fs=40)
+30 %. Mens du drar i størrelsen — eller i «Luft mellom notene» — blir panelet nesten gjennomsiktig, så du
+ser hva du justerer. Bare raden du holder i blir stående, så du fortsatt ser tallet, og et halvt sekund
+etter at du slipper kommer menyen tilbake. Verdien kan deles i lenken med `fs=`, for eksempel [`?id=lisa&fs=40`](https://punnerud.github.io/visualnotes/?id=lisa&fs=40)
 eller `fs=0`.
 
 **Utskrift** (🖨) viser arket i faktisk størrelse med de samme margene som skrives ut, så
