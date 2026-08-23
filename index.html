@@ -2529,6 +2529,16 @@ function instrCatalog() {
     return '  ' + g + ': ' + list;
   }).join('\n');
 }
+/* Valgene som er satt nå, i samme form som URL-en bruker, så modellen kan
+   ta dem med videre i stedet for å tilbakestille dem. */
+function settingBits() {
+  const bits = ['l=' + state.lang, 'ts=' + state.ts, 'bpm=' + state.bpm, 'fs=' + state.fingSize];
+  if (state.pitchMode !== 'written') bits.push('p=c');
+  if (state.transpose) bits.push('k=' + state.transpose);
+  if (state.dir !== 'auto') bits.push('dir=' + state.dir);
+  if (state.upbeat) bits.push('up=' + state.upbeat);
+  return bits;
+}
 function buildPrompt(wish) {
   const ins = curInstr();
   const r = chartRange(ins);
@@ -2578,7 +2588,8 @@ bpm=  tempo, 30-240                             k=   transpose everything n semi
 p=    w (default) means the tokens are exactly what the player reads on the chosen instrument.
       p=c means the tokens are concert pitch and get transposed for each instrument.
 w=    optional lyric syllables, one per note, separated by |
-fs=   fingering size in percent, 0-100. 0 shows the notes alone, 40 keeps a small hint
+fs=   fingering size in percent, 0-100. 100 is the full chart, 40 leaves a small reminder above
+      the letter, 0 shows the notes alone. Use it when I ask for less help or for notes only.
 auto=1 starts playback, met=0 turns the metronome off, tone=0 turns the sound off
 
 Rules to follow:
@@ -2587,9 +2598,9 @@ Rules to follow:
 - Encode spaces as + and leave : | * - ~ # as they are.
 - Return one single URL on one line.
 
-Currently chosen (keep unless I ask for something else):
+Currently chosen — carry these over unless I ask for something else:
   i=${ins.id} — ${enName(ins.id)}, ${ins.clef} clef, written range ${midiName(r.lo)}-${midiName(r.hi)}${ins.fing ? '' : ' (no fingering chart)'}
-  l=${state.lang}   ts=${state.ts}   bpm=${state.bpm}
+  ${settingBits().join('   ')}
 
 Instrument ids:
 ${instrCatalog()}`;
@@ -2598,9 +2609,7 @@ ${instrCatalog()}`;
 /* Melodien som vises nå, i samme form som URL-en bruker */
 function currentSongSnippet() {
   const ins = curInstr();
-  const bits = ['i=' + ins.id, 'ts=' + state.ts, 'bpm=' + state.bpm, 'l=' + state.lang];
-  if (state.transpose) bits.push('k=' + state.transpose);
-  if (state.pitchMode !== 'written') bits.push('p=c');
+  const bits = ['i=' + ins.id].concat(settingBits());
   return T('ui.aiInclude') + '\n' +
     's=' + state.sourceText + '\n' +
     (state.title ? 't=' + state.title + '\n' : '') +
