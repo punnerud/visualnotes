@@ -35,8 +35,11 @@ function cardMinWidth(kind) {
   return 62;
 }
 function cardWidth(e, kind) {
-  const w = 62 + state.air * 30 * Math.log2(Math.max(0.25, e.beats) * 2);
-  return Math.round(clamp(Math.max(w, cardMinWidth(kind)), 56, 240));
+  // Grunnbredden gir plass til grepet og bokstaven; krymper grepet, kan kortene
+  // stå tettere, så flere toner er synlige når man nærmer seg ren notelesing.
+  const base = 62 * (0.72 + 0.28 * fingScale());
+  const w = base + state.air * 30 * Math.log2(Math.max(0.25, e.beats) * 2);
+  return Math.round(clamp(Math.max(w, cardMinWidth(kind)), 46, 240));
 }
 
 /* Ett kort: grep øverst, bokstav, note på linjene, evt. stavelse */

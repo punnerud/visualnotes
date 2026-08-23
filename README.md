@@ -64,7 +64,9 @@ klikket høres. Verdien huskes per enhet.
 
 **Fra grep til noter.** «Størrelse på grep» i innstillingene trapper grepdiagrammet gradvis ned, fra
 full størrelse til bare en liten påminnelse over bokstaven — og til slutt av, så bare notene står igjen.
-Kortene krymper med, så notebåndet får mer plass etter hvert som eleven trenger grepene mindre. Verdien
+Kortene blir både lavere og smalere med, så flere toner er synlige og notebåndet får mer plass etter
+hvert som eleven trenger grepene mindre — på piano går kortet fra 330 til 166 piksler mellom 100 % og
+30 %. Verdien
 kan deles i lenken med `fs=`, for eksempel [`?id=lisa&fs=40`](https://punnerud.github.io/visualnotes/?id=lisa&fs=40)
 eller `fs=0`.
 

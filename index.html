@@ -63,7 +63,8 @@
   .note .fingwrap{height:calc(clamp(92px,21vh,164px) * var(--fs,1));width:100%;
     display:flex;align-items:center;justify-content:center}
   .note .fingwrap svg{height:100%;width:auto;max-width:100%}
-  .note .fingwrap svg.fing-keys,.note .fingwrap svg.fing-slide{height:auto;width:100%}
+  .note .fingwrap svg.fing-keys{height:auto;width:100%;max-width:calc(158px * var(--fs,1))}
+  .note .fingwrap svg.fing-slide{height:auto;width:100%;max-width:calc(142px * var(--fs,1))}
   .note.nofing .fingwrap{height:auto}
   .note .name{font-size:24px;font-weight:800;line-height:1;letter-spacing:-.02em}
   .note .name small{font-size:13px;opacity:.55;font-weight:700}
@@ -90,7 +91,7 @@
     will-change:transform;
   }
   .strip.vert .note{
-    width:min(94vw,330px);height:var(--h);
+    width:min(94vw,calc(96px + 234px * var(--fs,1)));height:var(--h);
     flex-direction:row;align-items:center;justify-content:flex-start;
     gap:0;padding:3px 12px;border-radius:14px;overflow:hidden;transform:none;
   }
@@ -1749,8 +1750,11 @@ function cardMinWidth(kind) {
   return 62;
 }
 function cardWidth(e, kind) {
-  const w = 62 + state.air * 30 * Math.log2(Math.max(0.25, e.beats) * 2);
-  return Math.round(clamp(Math.max(w, cardMinWidth(kind)), 56, 240));
+  // Grunnbredden gir plass til grepet og bokstaven; krymper grepet, kan kortene
+  // stå tettere, så flere toner er synlige når man nærmer seg ren notelesing.
+  const base = 62 * (0.72 + 0.28 * fingScale());
+  const w = base + state.air * 30 * Math.log2(Math.max(0.25, e.beats) * 2);
+  return Math.round(clamp(Math.max(w, cardMinWidth(kind)), 46, 240));
 }
 
 /* Ett kort: grep øverst, bokstav, note på linjene, evt. stavelse */
