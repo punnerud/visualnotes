@@ -42,7 +42,8 @@
 
   /* ---------- Tonerekka ---------- */
   .strip{
-    display:flex;align-items:stretch;gap:8px;width:100%;flex:0 1 auto;min-height:0;
+    display:flex;align-items:stretch;gap:calc(2px + 6px * var(--sp,1));
+    width:100%;flex:0 1 auto;min-height:0;
     overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;
     padding:14px calc(50vw - 60px) 12px;
     scrollbar-width:thin;cursor:grab;
@@ -100,9 +101,11 @@
   }
   .strip.vert .note.done{opacity:.5}
   .strip.vert .note.current{opacity:1;transform:none;box-shadow:0 0 0 3px var(--gold),0 8px 22px rgba(0,0,0,.45)}
-  .strip.vert .note .fingwrap{flex:0 0 auto;width:auto;height:auto;
-    max-height:calc(86px * var(--fs,1));max-width:54%}
-  .strip.vert .note .fingwrap svg{height:auto;width:auto;max-height:calc(86px * var(--fs,1));max-width:100%}
+  /* Diagrammet må aldri bli høyere enn kortet, som krymper med luft-innstillingen */
+  .strip.vert .note .fingwrap{flex:0 1 auto;width:auto;height:auto;min-height:0;
+    max-height:min(calc(86px * var(--fs,1)),calc(var(--h,86px) - 10px));max-width:54%}
+  .strip.vert .note .fingwrap svg{height:auto;width:auto;max-width:100%;
+    max-height:min(calc(86px * var(--fs,1)),calc(var(--h,86px) - 10px))}
   .strip.vert .note .name{margin:0 16px;font-size:26px}
   .strip.vert .note .lyric{margin-left:auto;padding-right:4px}
   .strip.vert .note.barstart{border-bottom-color:rgba(28,23,18,.45)}
@@ -144,8 +147,8 @@
     border-top:7px solid var(--gold);
   }
 
-  .gap{margin-left:18px}
-  .gap2{margin-left:34px}
+  .gap{margin-left:calc(4px + 14px * var(--sp,1))}
+  .gap2{margin-left:calc(8px + 26px * var(--sp,1))}
   .barline{flex:0 0 auto;width:3px;align-self:stretch;margin:16px 3px;background:rgba(251,247,238,.35);border-radius:2px}
 
   /* ---------- Info ---------- */

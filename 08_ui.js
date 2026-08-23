@@ -12,6 +12,8 @@ function fingScale() { return clamp(state.fingSize, 0, 200) / 100; }
 function showsFing() { return state.fingSize > 0; }
 /* Notebåndet skaleres på samme vis: 0 gir bare grep, 100 full notelinje. */
 function noteScale() { return clamp(state.noteSize, 0, 200) / 100; }
+/* Luft mellom notene: 100 % er vanlig, 0 % er så tett det er lesbart. */
+function airK() { return clamp(state.airPct, 0, 200) / 100; }
 /* 'h' = tonene glir sidelengs, 'v' = de faller nedover. Auto følger instrumentet. */
 function curDir() { return state.dir === 'h' || state.dir === 'v' ? state.dir : defaultDirection(curInstr()); }
 /* Tonen slik den skal leses på valgt instrument.
@@ -40,7 +42,7 @@ function cardWidth(e, kind) {
   // Grunnbredden gir plass til grepet og bokstaven; krymper grepet, kan kortene
   // stå tettere, så flere toner er synlige når man nærmer seg ren notelesing.
   const base = 62 * (0.72 + 0.28 * fingScale());
-  const w = base + state.air * 30 * Math.log2(Math.max(0.25, e.beats) * 2);
+  const w = base + (4 + 14 * airK()) * Math.log2(Math.max(0.25, e.beats) * 2);
   return Math.round(clamp(Math.max(w, cardMinWidth(kind)), 46, 240));
 }
 
@@ -186,8 +188,8 @@ const S_HEAD = 13;                    // notehodets avstand fra segmentets venst
 let vY = 0, sX = 0, sSegs = [], beatStart = [], beatTotal = 0;
 /* Alle kortene er like høye. Varigheten leses av notebåndet under, og like
    høye kort gjør at man ser flere av de kommende grepene. */
-function cardH() { return Math.max(44, (86 + state.air * 24) * fingScale()); }
-function ppbSBase() { return 56 + state.air * 40; }
+function cardH() { return Math.max(44, (70 + 30 * airK()) * fingScale()); }
+function ppbSBase() { return 26 + 54 * airK(); }
 function ppbS() { return ppbSBase() * noteScale(); }
 
 /* Notebåndet: én sammenhengende notelinje der bredden følger varigheten.
@@ -745,8 +747,8 @@ function renderSettings() {
          (auto === null ? '' : ' · ' + T('ui.audioAuto', { n: auto, sum: auto + v })),
     applyAudioOffset));
   b.appendChild(calibratorRow());
-  b.appendChild(rangeRow('ui.air', 0, 1.6, 0.1, state.air, v => Math.round(v * 100) + ' %',
-    v => { state.air = v; saveState(); rebuildAll(); }, true));
+  b.appendChild(rangeRow('ui.air', 0, 200, 1, state.airPct, v => v + ' %',
+    v => { state.airPct = Math.round(v); saveState(); rebuildAll(); syncUrl(); }, true, 100));
   b.appendChild(rangeRow('ui.fingSize', 0, 200, 1, state.fingSize,
     v => (v === 0 ? T('ui.off') : v + ' %'),
     v => { state.fingSize = Math.round(v); saveState(); rebuildAll(); syncUrl(); }, true, 100));
@@ -891,7 +893,7 @@ function instrCatalog() {
    ta dem med videre i stedet for å tilbakestille dem. */
 function settingBits() {
   const bits = ['l=' + state.lang, 'ts=' + state.ts, 'bpm=' + state.bpm,
-                'fs=' + state.fingSize, 'ns=' + state.noteSize];
+                'fs=' + state.fingSize, 'ns=' + state.noteSize, 'sp=' + state.airPct];
   if (state.pitchMode !== 'written') bits.push('p=c');
   if (state.transpose) bits.push('k=' + state.transpose);
   if (state.dir !== 'auto') bits.push('dir=' + state.dir);
@@ -950,6 +952,7 @@ w=    optional lyric syllables, one per note, separated by |
 fs=   fingering size in percent, 0-200, where 100 is the normal size. 40 leaves a small reminder
       above the letter, 0 shows the notes alone, 160 makes the chart big for a beginner.
 ns=   notation size in percent, 0-200, same scale. 0 hides the staff and leaves the fingerings alone.
+sp=   spacing between the notes in percent, 0-200. 100 is normal, 0 packs them tight.
 auto=1 starts playback, met=0 turns the metronome off, tone=0 turns the sound off
 
 Rules to follow:

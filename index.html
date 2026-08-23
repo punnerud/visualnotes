@@ -42,7 +42,8 @@
 
   /* ---------- Tonerekka ---------- */
   .strip{
-    display:flex;align-items:stretch;gap:8px;width:100%;flex:0 1 auto;min-height:0;
+    display:flex;align-items:stretch;gap:calc(2px + 6px * var(--sp,1));
+    width:100%;flex:0 1 auto;min-height:0;
     overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;
     padding:14px calc(50vw - 60px) 12px;
     scrollbar-width:thin;cursor:grab;
@@ -100,9 +101,11 @@
   }
   .strip.vert .note.done{opacity:.5}
   .strip.vert .note.current{opacity:1;transform:none;box-shadow:0 0 0 3px var(--gold),0 8px 22px rgba(0,0,0,.45)}
-  .strip.vert .note .fingwrap{flex:0 0 auto;width:auto;height:auto;
-    max-height:calc(86px * var(--fs,1));max-width:54%}
-  .strip.vert .note .fingwrap svg{height:auto;width:auto;max-height:calc(86px * var(--fs,1));max-width:100%}
+  /* Diagrammet må aldri bli høyere enn kortet, som krymper med luft-innstillingen */
+  .strip.vert .note .fingwrap{flex:0 1 auto;width:auto;height:auto;min-height:0;
+    max-height:min(calc(86px * var(--fs,1)),calc(var(--h,86px) - 10px));max-width:54%}
+  .strip.vert .note .fingwrap svg{height:auto;width:auto;max-width:100%;
+    max-height:min(calc(86px * var(--fs,1)),calc(var(--h,86px) - 10px))}
   .strip.vert .note .name{margin:0 16px;font-size:26px}
   .strip.vert .note .lyric{margin-left:auto;padding-right:4px}
   .strip.vert .note.barstart{border-bottom-color:rgba(28,23,18,.45)}
@@ -144,8 +147,8 @@
     border-top:7px solid var(--gold);
   }
 
-  .gap{margin-left:18px}
-  .gap2{margin-left:34px}
+  .gap{margin-left:calc(4px + 14px * var(--sp,1))}
+  .gap2{margin-left:calc(8px + 26px * var(--sp,1))}
   .barline{flex:0 0 auto;width:3px;align-self:stretch;margin:16px 3px;background:rgba(251,247,238,.35);border-radius:2px}
 
   /* ---------- Info ---------- */
@@ -1756,6 +1759,8 @@ function fingScale() { return clamp(state.fingSize, 0, 200) / 100; }
 function showsFing() { return state.fingSize > 0; }
 /* Notebåndet skaleres på samme vis: 0 gir bare grep, 100 full notelinje. */
 function noteScale() { return clamp(state.noteSize, 0, 200) / 100; }
+/* Luft mellom notene: 100 % er vanlig, 0 % er så tett det er lesbart. */
+function airK() { return clamp(state.airPct, 0, 200) / 100; }
 /* 'h' = tonene glir sidelengs, 'v' = de faller nedover. Auto følger instrumentet. */
 function curDir() { return state.dir === 'h' || state.dir === 'v' ? state.dir : defaultDirection(curInstr()); }
 /* Tonen slik den skal leses på valgt instrument.
@@ -1784,7 +1789,7 @@ function cardWidth(e, kind) {
   // Grunnbredden gir plass til grepet og bokstaven; krymper grepet, kan kortene
   // stå tettere, så flere toner er synlige når man nærmer seg ren notelesing.
   const base = 62 * (0.72 + 0.28 * fingScale());
-  const w = base + state.air * 30 * Math.log2(Math.max(0.25, e.beats) * 2);
+  const w = base + (4 + 14 * airK()) * Math.log2(Math.max(0.25, e.beats) * 2);
   return Math.round(clamp(Math.max(w, cardMinWidth(kind)), 46, 240));
 }
 
@@ -1930,8 +1935,8 @@ const S_HEAD = 13;                    // notehodets avstand fra segmentets venst
 let vY = 0, sX = 0, sSegs = [], beatStart = [], beatTotal = 0;
 /* Alle kortene er like høye. Varigheten leses av notebåndet under, og like
    høye kort gjør at man ser flere av de kommende grepene. */
-function cardH() { return Math.max(44, (86 + state.air * 24) * fingScale()); }
-function ppbSBase() { return 56 + state.air * 40; }
+function cardH() { return Math.max(44, (70 + 30 * airK()) * fingScale()); }
+function ppbSBase() { return 26 + 54 * airK(); }
 function ppbS() { return ppbSBase() * noteScale(); }
 
 /* Notebåndet: én sammenhengende notelinje der bredden følger varigheten.
@@ -2489,8 +2494,8 @@ function renderSettings() {
          (auto === null ? '' : ' · ' + T('ui.audioAuto', { n: auto, sum: auto + v })),
     applyAudioOffset));
   b.appendChild(calibratorRow());
-  b.appendChild(rangeRow('ui.air', 0, 1.6, 0.1, state.air, v => Math.round(v * 100) + ' %',
-    v => { state.air = v; saveState(); rebuildAll(); }, true));
+  b.appendChild(rangeRow('ui.air', 0, 200, 1, state.airPct, v => v + ' %',
+    v => { state.airPct = Math.round(v); saveState(); rebuildAll(); syncUrl(); }, true, 100));
   b.appendChild(rangeRow('ui.fingSize', 0, 200, 1, state.fingSize,
     v => (v === 0 ? T('ui.off') : v + ' %'),
     v => { state.fingSize = Math.round(v); saveState(); rebuildAll(); syncUrl(); }, true, 100));
@@ -2635,7 +2640,7 @@ function instrCatalog() {
    ta dem med videre i stedet for å tilbakestille dem. */
 function settingBits() {
   const bits = ['l=' + state.lang, 'ts=' + state.ts, 'bpm=' + state.bpm,
-                'fs=' + state.fingSize, 'ns=' + state.noteSize];
+                'fs=' + state.fingSize, 'ns=' + state.noteSize, 'sp=' + state.airPct];
   if (state.pitchMode !== 'written') bits.push('p=c');
   if (state.transpose) bits.push('k=' + state.transpose);
   if (state.dir !== 'auto') bits.push('dir=' + state.dir);
@@ -2694,6 +2699,7 @@ w=    optional lyric syllables, one per note, separated by |
 fs=   fingering size in percent, 0-200, where 100 is the normal size. 40 leaves a small reminder
       above the letter, 0 shows the notes alone, 160 makes the chart big for a beginner.
 ns=   notation size in percent, 0-200, same scale. 0 hides the staff and leaves the fingerings alone.
+sp=   spacing between the notes in percent, 0-200. 100 is normal, 0 packs them tight.
 auto=1 starts playback, met=0 turns the metronome off, tone=0 turns the sound off
 
 Rules to follow:
@@ -2908,11 +2914,11 @@ const COOKIE = 'visualnotes';
 const DEFAULTS = {
   lang: 'no', instrId: 'tromp_bb', naming: 'native', pitchMode: 'written', recorderGerman: false,
   bpm: 100, ts: '4/4', upbeat: 0, auto: false, metronome: true, tone: true, countIn: 4,
-  air: 0.6, fingSize: 100, noteSize: 100, showBars: true, showOct: true, transpose: 0,
+  airPct: 100, fingSize: 100, noteSize: 100, showBars: true, showOct: true, transpose: 0,
   dir: 'auto', audioOffset: 0, pRows: 11, pZoom: 0.8, pLand: true,
 };
 const PERSIST = ['lang', 'instrId', 'naming', 'pitchMode', 'recorderGerman', 'bpm', 'auto',
-                 'metronome', 'tone', 'countIn', 'air', 'fingSize', 'noteSize', 'showBars', 'showOct',
+                 'metronome', 'tone', 'countIn', 'airPct', 'fingSize', 'noteSize', 'showBars', 'showOct',
                  'dir', 'audioOffset', 'pRows', 'pZoom', 'pLand'];
 const state = Object.assign({}, DEFAULTS, {
   title: '', songId: null, sourceText: '', events: [], cur: 0, words: null, parseErrors: [],
@@ -3000,6 +3006,7 @@ function rebuildAll() {
   state.events = markBars(state.events, state.ts, state.upbeat);
   document.documentElement.style.setProperty('--fs', fingScale().toFixed(3));
   document.documentElement.style.setProperty('--ns', noteScale().toFixed(3));
+  document.documentElement.style.setProperty('--sp', airK().toFixed(3));
   computeBeatIndex();
   renderStrip();
   renderLegend();
@@ -3035,7 +3042,8 @@ function applyQuery(q) {
     }
   });
   if (q.count !== undefined) state.countIn = clamp(parseInt(q.count, 10) || 0, 0, 8);
-  if (q.air !== undefined) state.air = clamp(parseFloat(q.air), 0, 1.6);
+  if (q.air !== undefined) state.airPct = clamp(Math.round(parseFloat(q.air) / 0.6 * 100), 0, 200);  // eldre skala
+  if (q.sp !== undefined) state.airPct = clamp(parseInt(q.sp, 10) || 0, 0, 200);
   if (q.fing !== undefined) state.fingSize = q.fing === '0' ? 0 : 100;   // eldre lenker
   if (q.fs !== undefined) state.fingSize = clamp(parseInt(q.fs, 10) || 0, 0, 200);
   if (q.ns !== undefined) state.noteSize = clamp(parseInt(q.ns, 10) || 0, 0, 200);
@@ -3075,6 +3083,7 @@ function buildUrl() {
   if (state.dir !== 'auto') add('dir', state.dir);
   if (state.fingSize !== 100) add('fs', state.fingSize);
   if (state.noteSize !== 100) add('ns', state.noteSize);
+  if (state.airPct !== 100) add('sp', state.airPct);
   if (state.audioOffset) add('off', state.audioOffset);
   if (state.transpose) add('k', state.transpose);
   if (state.auto !== DEFAULTS.auto) add('auto', state.auto ? 1 : 0);
@@ -3177,6 +3186,10 @@ function init() {
   PERSIST.forEach(k => { if (saved[k] !== undefined) state[k] = saved[k]; });
   // eldre cookie: grep var av/på, ikke en størrelse
   if (saved.fingSize === undefined && saved.showFing === false) state.fingSize = 0;
+  // eldre cookie: luft var 0–1,6 med 0,6 som vanlig
+  if (saved.airPct === undefined && typeof saved.air === 'number') {
+    state.airPct = clamp(Math.round(saved.air / 0.6 * 100), 0, 200);
+  }
   const q = query();
   const loaded = applyQuery(q);
   if (!loaded) loadSong('lisa');

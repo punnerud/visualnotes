@@ -108,7 +108,7 @@ Alt kan settes med GET-parametere. Korte navn er de kanoniske; de lange i parent
 | `count` | antall opptellingsslag før start | `4` |
 | `dir` | retning: `auto`, `h` (sidelengs) eller `v` (fallende) | `auto` |
 | `off` | lydforsinkelse i millisekunder, −300…300 | `0` |
-| `air` | luft mellom notene, `0`–`1.6` | `0.6` |
+| `sp` | luft mellom notene i prosent, `0`–`200`. `0` pakker dem tett | `100` |
 | `fs` | størrelse på grepdiagrammet i prosent, `0`–`200`. `0` gir bare noter | `100` |
 | `ns` | størrelse på notebåndet i prosent, `0`–`200`. `0` gir bare grep | `100` |
 | `bars` | `0` skjuler taktstrekene | `1` |

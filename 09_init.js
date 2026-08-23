@@ -5,11 +5,11 @@ const COOKIE = 'visualnotes';
 const DEFAULTS = {
   lang: 'no', instrId: 'tromp_bb', naming: 'native', pitchMode: 'written', recorderGerman: false,
   bpm: 100, ts: '4/4', upbeat: 0, auto: false, metronome: true, tone: true, countIn: 4,
-  air: 0.6, fingSize: 100, noteSize: 100, showBars: true, showOct: true, transpose: 0,
+  airPct: 100, fingSize: 100, noteSize: 100, showBars: true, showOct: true, transpose: 0,
   dir: 'auto', audioOffset: 0, pRows: 11, pZoom: 0.8, pLand: true,
 };
 const PERSIST = ['lang', 'instrId', 'naming', 'pitchMode', 'recorderGerman', 'bpm', 'auto',
-                 'metronome', 'tone', 'countIn', 'air', 'fingSize', 'noteSize', 'showBars', 'showOct',
+                 'metronome', 'tone', 'countIn', 'airPct', 'fingSize', 'noteSize', 'showBars', 'showOct',
                  'dir', 'audioOffset', 'pRows', 'pZoom', 'pLand'];
 const state = Object.assign({}, DEFAULTS, {
   title: '', songId: null, sourceText: '', events: [], cur: 0, words: null, parseErrors: [],
@@ -97,6 +97,7 @@ function rebuildAll() {
   state.events = markBars(state.events, state.ts, state.upbeat);
   document.documentElement.style.setProperty('--fs', fingScale().toFixed(3));
   document.documentElement.style.setProperty('--ns', noteScale().toFixed(3));
+  document.documentElement.style.setProperty('--sp', airK().toFixed(3));
   computeBeatIndex();
   renderStrip();
   renderLegend();
@@ -132,7 +133,8 @@ function applyQuery(q) {
     }
   });
   if (q.count !== undefined) state.countIn = clamp(parseInt(q.count, 10) || 0, 0, 8);
-  if (q.air !== undefined) state.air = clamp(parseFloat(q.air), 0, 1.6);
+  if (q.air !== undefined) state.airPct = clamp(Math.round(parseFloat(q.air) / 0.6 * 100), 0, 200);  // eldre skala
+  if (q.sp !== undefined) state.airPct = clamp(parseInt(q.sp, 10) || 0, 0, 200);
   if (q.fing !== undefined) state.fingSize = q.fing === '0' ? 0 : 100;   // eldre lenker
   if (q.fs !== undefined) state.fingSize = clamp(parseInt(q.fs, 10) || 0, 0, 200);
   if (q.ns !== undefined) state.noteSize = clamp(parseInt(q.ns, 10) || 0, 0, 200);
@@ -172,6 +174,7 @@ function buildUrl() {
   if (state.dir !== 'auto') add('dir', state.dir);
   if (state.fingSize !== 100) add('fs', state.fingSize);
   if (state.noteSize !== 100) add('ns', state.noteSize);
+  if (state.airPct !== 100) add('sp', state.airPct);
   if (state.audioOffset) add('off', state.audioOffset);
   if (state.transpose) add('k', state.transpose);
   if (state.auto !== DEFAULTS.auto) add('auto', state.auto ? 1 : 0);
@@ -274,6 +277,10 @@ function init() {
   PERSIST.forEach(k => { if (saved[k] !== undefined) state[k] = saved[k]; });
   // eldre cookie: grep var av/på, ikke en størrelse
   if (saved.fingSize === undefined && saved.showFing === false) state.fingSize = 0;
+  // eldre cookie: luft var 0–1,6 med 0,6 som vanlig
+  if (saved.airPct === undefined && typeof saved.air === 'number') {
+    state.airPct = clamp(Math.round(saved.air / 0.6 * 100), 0, 200);
+  }
   const q = query();
   const loaded = applyQuery(q);
   if (!loaded) loadSong('lisa');
