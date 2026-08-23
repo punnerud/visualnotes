@@ -41,8 +41,8 @@ function cardMinWidth(kind) {
 function cardWidth(e, kind) {
   // Grunnbredden gir plass til grepet og bokstaven; krymper grepet, kan kortene
   // stå tettere, så flere toner er synlige når man nærmer seg ren notelesing.
-  const base = 62 * (0.72 + 0.28 * fingScale());
-  const w = base + (4 + 14 * airK()) * Math.log2(Math.max(0.25, e.beats) * 2);
+  const base = 62 * (0.72 + 0.28 * fingScale()) * (0.82 + 0.18 * airK());
+  const w = base + (2 + 16 * airK()) * Math.log2(Math.max(0.25, e.beats) * 2);
   return Math.round(clamp(Math.max(w, cardMinWidth(kind)), 46, 240));
 }
 
@@ -188,8 +188,11 @@ const S_HEAD = 13;                    // notehodets avstand fra segmentets venst
 let vY = 0, sX = 0, sSegs = [], beatStart = [], beatTotal = 0;
 /* Alle kortene er like høye. Varigheten leses av notebåndet under, og like
    høye kort gjør at man ser flere av de kommende grepene. */
-function cardH() { return Math.max(44, (70 + 30 * airK()) * fingScale()); }
-function ppbSBase() { return 26 + 54 * airK(); }
+function cardH() { return Math.max(40, (62 + 38 * airK()) * fingScale()); }
+function ppbSBase() { return 16 + 64 * airK(); }
+/* Notehodet skal stå nær starten av tonen. Når det er tett, må avstanden
+   fra segmentkanten krympe med, ellers havner hodet nesten på neste tone. */
+function sHead() { return Math.min(S_HEAD, 0.35 * ppbSBase()); }
 function ppbS() { return ppbSBase() * noteScale(); }
 
 /* Notebåndet: én sammenhengende notelinje der bredden følger varigheten.
@@ -207,7 +210,7 @@ function renderStaffBand() {
     const w = e.beats * ppb;                       // tegnebredde, før skalering
     el.style.width = (w * k).toFixed(2) + 'px';
     el.innerHTML = staffSVG(e.rest ? null : writtenOf(e), e.dur, e.dot, ins.clef, w,
-      { cont: true, headX: S_HEAD, bar: e.bar && state.showBars, scale: k });
+      { cont: true, headX: sHead(), bar: e.bar && state.showBars, scale: k });
     el.addEventListener('click', () => { stopIfPlaying(); go(i); });
     lane.appendChild(el);
     return el;
@@ -217,7 +220,7 @@ function renderStaffBand() {
 }
 function sOffset(beatPos) {
   const w = ($('sband') && $('sband').clientWidth) || 1;   // båndets egen bredde, uansett plassering
-  return w / 2 - beatPos * ppbS() - S_HEAD * noteScale();
+  return w / 2 - beatPos * ppbS() - sHead() * noteScale();
 }
 function sLaneStyle(transition, x) {
   const lane = $('slane');
@@ -229,7 +232,7 @@ function sLaneStyle(transition, x) {
 /* Hvilket taktslag som ligger på spillehodet ved en gitt forskyvning */
 function beatAtBandOffset(x) {
   const w = ($('sband') && $('sband').clientWidth) || 1;
-  return (w / 2 - S_HEAD * noteScale() - x) / ppbS();
+  return (w / 2 - sHead() * noteScale() - x) / ppbS();
 }
 /* Invers av beatAtIndexF: fra taktslag til (brøkdels) tonenummer */
 function indexAtBeat(beat) {
