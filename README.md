@@ -23,7 +23,8 @@ URL, so an LLM can generate a link. Four languages, no build step in the browser
 | [`?v=0 13 12 1 0`](https://punnerud.github.io/visualnotes/?v=0+13+12+1+0) | Ventiltall i stedet for tonenavn |
 | [`?id=glede&i=altsax&l=sv`](https://punnerud.github.io/visualnotes/?id=glede&i=altsax&l=sv) | Altsaksofon, svensk |
 
-Innstillinger (⚙) husker språk, instrument, lyd og utskriftsvalg i en cookie i ett år. Alt du endrer
+Innstillinger (⚙) er delt i **Instrument**, **Visning** og **Lyd og avspilling**, med språk øverst og
+nullstilling nederst. Alt huskes i en cookie i ett år. Alt du endrer
 speiles i URL-en, så lenken i adressefeltet er alltid den du kan dele.
 
 **Tempo** justeres rett over avspillingsknappen: − og + hopper til nærmeste runde ti, og trykker du på

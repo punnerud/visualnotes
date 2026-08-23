@@ -103,7 +103,7 @@ ok(missing.length === 0, 'kalles uten å finnes: ' + missing.join(', '));
 /* Funksjoner som må være der — hele UI-et henger på dem */
 const REQUIRED = ['$', 'esc', 'clamp', 'T', 'openSheet', 'closeSheet', 'switchRow', 'segRow', 'rangeRow',
   'renderSettings', 'renderSongs', 'renderShare', 'renderAi', 'renderPrint', 'renderStrip',
-  'renderStaffBand', 'renderLegend', 'qrSection', 'showQr', 'resetRow', 'resetSettings', 'qrMatrix', 'qrSVG', 'instrName', 'updateHeader', 'paintBand', 'positionBand',
+  'renderStaffBand', 'renderLegend', 'qrSection', 'showQr', 'groupRow', 'resetRow', 'resetSettings', 'qrMatrix', 'qrSVG', 'instrName', 'updateHeader', 'paintBand', 'positionBand',
   'glideBand', 'makeCard', 'go', 'init', 'buildUrl', 'setSource', 'loadSong',
   'outputLatency', 'startCalibration', 'stopCalibration', 'calibratorRow', 'applyAudioOffset',
   'setupBandDrag', 'indexAtBeat', 'beatAtBandOffset', 'setLanesFromBeat', 'selectOnly',

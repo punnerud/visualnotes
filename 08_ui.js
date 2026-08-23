@@ -582,6 +582,12 @@ function switchRow(labelKey, subKey, on, onToggle, visual) {
   row.appendChild(b);
   return row;
 }
+function groupRow(labelKey) {
+  const h = document.createElement('div');
+  h.className = 'grp';
+  h.textContent = T(labelKey);
+  return h;
+}
 function segRow(labelKey, options, value, onPick, subKey, visual) {
   const row = document.createElement('div');
   row.className = 'row';
@@ -673,6 +679,8 @@ function attachPeek(row, inp) {
 }
 function renderSettings() {
   stopCalibration();          // prikkene tegnes på nytt, så kalibratoren må stoppe
+  const sheet = $('settings').querySelector('.sheet-inner');
+  const scroll = sheet ? sheet.scrollTop : 0;
   const b = $('setBody');
   b.innerHTML = '';
   $('setTitle').textContent = T('ui.settings');
@@ -680,7 +688,8 @@ function renderSettings() {
   b.appendChild(segRow('ui.language', LANG_ORDER.map(l => ({ value: l, label: T('meta.name', null) && I18N[l] ? I18N[l].meta.name : l })), state.lang,
     v => { state.lang = v; saveState(); rebuildAll(); renderSettings(); }));
 
-  // Instrument: gruppe -> familie -> variant
+  /* ---------------- Instrument ---------------- */
+  b.appendChild(groupRow('ui.grpInstrument'));
   const ins = curInstr();
   const gRow = document.createElement('div');
   gRow.className = 'row';
@@ -722,46 +731,11 @@ function renderSettings() {
       { value: false, label: T('ui.baroque') }, { value: true, label: T('ui.german') },
     ], state.recorderGerman, v => { state.recorderGerman = v; saveState(); rebuildAll(); renderSettings(); }, null, true));
   }
-  b.appendChild(segRow('ui.direction', [
-    { value: 'auto', label: T('ui.dirAuto') },
-    { value: 'h', label: T('ui.dirHoriz') },
-    { value: 'v', label: T('ui.dirVert') },
-  ], state.dir, v => { state.dir = v; saveState(); rebuildAll(); renderSettings(); syncUrl(); },
-     state.dir === 'auto' ? 'ui.dirAutoSub' : null, true));
-
-  b.appendChild(segRow('ui.noteNames', [
-    { value: 'native', label: T('ui.nativeNames') }, { value: 'intl', label: T('ui.intlNames') },
-  ], state.naming, v => { state.naming = v; saveState(); rebuildAll(); renderSettings(); }, null, true));
-
   if (ins.letters || ins.semis) {
     b.appendChild(segRow('ui.pitchView', [
       { value: 'written', label: T('ui.writtenPitch') }, { value: 'concert', label: T('ui.concertPitch') },
     ], state.pitchMode, v => { state.pitchMode = v; saveState(); rebuildAll(); renderSettings(); syncUrl(); }, null, true));
   }
-  b.appendChild(rangeRow('ui.tempo', BPM_MIN, BPM_MAX, 1, state.bpm, v => v + ' BPM', applyTempo));
-  b.appendChild(switchRow('ui.autoAdvance', 'ui.autoAdvanceSub', state.auto, v => { state.auto = v; saveState(); syncUrl(); }));
-  b.appendChild(switchRow('ui.metronome', null, state.metronome, v => { state.metronome = v; saveState(); syncUrl(); }));
-  b.appendChild(switchRow('ui.toneSound', null, state.tone, v => { state.tone = v; saveState(); syncUrl(); }));
-  b.appendChild(switchRow('ui.countIn', null, state.countIn > 0, v => { state.countIn = v ? 4 : 0; saveState(); syncUrl(); }));
-  // Nettleserens eget anslag vises bare når lydmotoren er startet
-  const auto = AC ? Math.round(outputLatency(AC) * 1000) : null;
-  b.appendChild(rangeRow('ui.audioOffset', -300, 300, 10, state.audioOffset,
-    v => (v > 0 ? '+' : '') + v + ' ms' +
-         (auto === null ? '' : ' · ' + T('ui.audioAuto', { n: auto, sum: auto + v })),
-    applyAudioOffset));
-  b.appendChild(calibratorRow());
-  b.appendChild(rangeRow('ui.air', 0, 200, 1, state.airPct, v => v + ' %',
-    v => { state.airPct = Math.round(v); saveState(); rebuildAll(); syncUrl(); }, true, 100));
-  b.appendChild(rangeRow('ui.fingSize', 0, 200, 1, state.fingSize,
-    v => (v === 0 ? T('ui.off') : v + ' %'),
-    v => { state.fingSize = Math.round(v); saveState(); rebuildAll(); syncUrl(); }, true, 100));
-  b.appendChild(rangeRow('ui.noteSize', 0, 200, 1, state.noteSize,
-    v => (v === 0 ? T('ui.off') : v + ' %'),
-    v => { state.noteSize = Math.round(v); saveState(); rebuildAll(); syncUrl(); }, true, 100));
-  b.appendChild(switchRow('ui.showBars', null, state.showBars, v => { state.showBars = v; saveState(); rebuildAll(); }, true));
-  b.appendChild(switchRow('ui.showOct', 'ui.showOctSub', state.oct,
-    v => { state.oct = v; saveState(); rebuildAll(); syncUrl(); }, true));
-
   const tr = document.createElement('div');
   tr.className = 'row';
   tr.innerHTML = `<label>${esc(T('ui.transpose'))}<span class="sub">${state.transpose > 0 ? '+' : ''}${state.transpose} ${esc(T('ui.semitones'))}</span></label>`;
@@ -779,7 +753,45 @@ function renderSettings() {
     });
     seg.appendChild(btn);
   });
-  tr.appendChild(seg); b.appendChild(tr);
+  tr.appendChild(seg);
+  b.appendChild(tr);
+
+  /* ---------------- Visning ---------------- */
+  b.appendChild(groupRow('ui.grpView'));
+  b.appendChild(segRow('ui.direction', [
+    { value: 'auto', label: T('ui.dirAuto') },
+    { value: 'h', label: T('ui.dirHoriz') },
+    { value: 'v', label: T('ui.dirVert') },
+  ], state.dir, v => { state.dir = v; saveState(); rebuildAll(); renderSettings(); syncUrl(); },
+     state.dir === 'auto' ? 'ui.dirAutoSub' : null, true));
+  b.appendChild(segRow('ui.noteNames', [
+    { value: 'native', label: T('ui.nativeNames') }, { value: 'intl', label: T('ui.intlNames') },
+  ], state.naming, v => { state.naming = v; saveState(); rebuildAll(); renderSettings(); }, null, true));
+  b.appendChild(rangeRow('ui.fingSize', 0, 200, 1, state.fingSize,
+    v => (v === 0 ? T('ui.off') : v + ' %'),
+    v => { state.fingSize = Math.round(v); saveState(); rebuildAll(); syncUrl(); }, true, 100));
+  b.appendChild(rangeRow('ui.noteSize', 0, 200, 1, state.noteSize,
+    v => (v === 0 ? T('ui.off') : v + ' %'),
+    v => { state.noteSize = Math.round(v); saveState(); rebuildAll(); syncUrl(); }, true, 100));
+  b.appendChild(rangeRow('ui.air', 0, 200, 1, state.airPct, v => v + ' %',
+    v => { state.airPct = Math.round(v); saveState(); rebuildAll(); syncUrl(); }, true, 100));
+  b.appendChild(switchRow('ui.showBars', null, state.showBars, v => { state.showBars = v; saveState(); rebuildAll(); syncUrl(); }, true));
+  b.appendChild(switchRow('ui.showOct', 'ui.showOctSub', state.oct,
+    v => { state.oct = v; saveState(); rebuildAll(); syncUrl(); }, true));
+
+  /* ---------------- Lyd og avspilling ---------------- */
+  b.appendChild(groupRow('ui.grpSound'));
+  b.appendChild(rangeRow('ui.tempo', BPM_MIN, BPM_MAX, 1, state.bpm, v => v + ' BPM', applyTempo));
+  b.appendChild(switchRow('ui.autoAdvance', 'ui.autoAdvanceSub', state.auto, v => { state.auto = v; saveState(); syncUrl(); }));
+  b.appendChild(switchRow('ui.metronome', null, state.metronome, v => { state.metronome = v; saveState(); syncUrl(); }));
+  b.appendChild(switchRow('ui.toneSound', null, state.tone, v => { state.tone = v; saveState(); syncUrl(); }));
+  b.appendChild(switchRow('ui.countIn', null, state.countIn > 0, v => { state.countIn = v ? 4 : 0; saveState(); syncUrl(); }));
+  const auto = AC ? Math.round(outputLatency(AC) * 1000) : null;
+  b.appendChild(rangeRow('ui.audioOffset', -300, 300, 10, state.audioOffset,
+    v => (v > 0 ? '+' : '') + v + ' ms' +
+         (auto === null ? '' : ' · ' + T('ui.audioAuto', { n: auto, sum: auto + v })),
+    applyAudioOffset));
+  b.appendChild(calibratorRow());
 
   b.appendChild(resetRow());
 
@@ -787,7 +799,10 @@ function renderSettings() {
   about.className = 'hint';
   about.innerHTML = T('ui.about');
   b.appendChild(about);
+
+  if (sheet) sheet.scrollTop = scroll;      // bli stående der man var
 }
+
 /* Nullstilling, med et bekreftelsessteg i samme rad */
 function resetRow() {
   const row = document.createElement('div');
