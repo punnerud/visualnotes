@@ -106,6 +106,9 @@ function staffSVG(n, dur, dot, clefId, w, opts) {
     const dotG = dot ? `<circle cx="${cx + 11}" cy="${cy - (Math.round((STAFF_BOTTOM - cy) / STAFF.half) % 2 === 0 ? 4 : 0)}" r="1.9" fill="${INK}"/>` : '';
     body = `<g stroke="${INK}" stroke-width="1.1">${led}</g>${stem}${flag}${head}${acc}${dotG}`;
   }
-  return `<svg class="staff" viewBox="0 0 ${width} ${STAFF_H}" width="${width}" height="${STAFF_H}" aria-hidden="true">
+  // opts.scale tegner i samme koordinater, men viser resultatet mindre eller større
+  const k = o.scale || 1;
+  return `<svg class="staff" viewBox="0 0 ${width} ${STAFF_H}" width="${(width * k).toFixed(1)}"
+    height="${(STAFF_H * k).toFixed(1)}" aria-hidden="true">
     <g stroke="${INK}" stroke-width="1.1">${lines}</g>${body}</svg>`;
 }

@@ -62,14 +62,17 @@ ofte, så innstillingene har en **lydforsinkelse** du kan justere selv, med en l
 takten som en metronom og lar to prikker lyse vekselvis, og du drar til prikken blinker samtidig som
 klikket høres. Verdien huskes per enhet.
 
-**Fra grep til noter.** «Størrelse på grep» i innstillingene trapper grepdiagrammet gradvis ned, fra
-full størrelse til bare en liten påminnelse over bokstaven — og til slutt av, så bare notene står igjen.
+**Fra grep til noter.** «Størrelse på grep» og «Størrelse på noter» i innstillingene trapper de to
+delene opp og ned hver for seg, fra full størrelse til av. Skru grepene ned, og bare notene står igjen;
+skru notene ned, og eleven ser bare grep. Notebåndet krymper i begge retninger samtidig, så notene står
+like tett som de er store.
 Kortene blir både lavere og smalere med, så flere toner er synlige og notebåndet får mer plass etter
 hvert som eleven trenger grepene mindre — på piano går kortet fra 330 til 166 piksler mellom 100 % og
 30 %. Mens du drar i størrelsen — eller i «Luft mellom notene» — blir panelet nesten gjennomsiktig, så du
 ser hva du justerer. Bare raden du holder i blir stående, så du fortsatt ser tallet, og et halvt sekund
-etter at du slipper kommer menyen tilbake. Verdien kan deles i lenken med `fs=`, for eksempel [`?id=lisa&fs=40`](https://punnerud.github.io/visualnotes/?id=lisa&fs=40)
-eller `fs=0`.
+etter at du slipper kommer menyen tilbake. Verdiene kan deles i lenken med `fs=` og `ns=`, for eksempel
+[`?id=lisa&fs=40`](https://punnerud.github.io/visualnotes/?id=lisa&fs=40) eller
+[`?id=lisa&ns=0`](https://punnerud.github.io/visualnotes/?id=lisa&ns=0).
 
 **Utskrift** (🖨) viser arket i faktisk størrelse med de samme margene som skrives ut, så
 forhåndsvisningen er det du får. Standard er liggende A4 på 80 %. En linje med toner deles aldri over
@@ -102,6 +105,7 @@ Alt kan settes med GET-parametere. Korte navn er de kanoniske; de lange i parent
 | `off` | lydforsinkelse i millisekunder, −300…300 | `0` |
 | `air` | luft mellom notene, `0`–`1.6` | `0.6` |
 | `fs` | størrelse på grepdiagrammet i prosent, `0`–`100`. `0` gir bare noter | `100` |
+| `ns` | størrelse på notebåndet i prosent, `0`–`100`. `0` gir bare grep | `100` |
 | `bars` | `0` skjuler taktstrekene | `1` |
 | `w` (`words`) | stavelser under notene: `Li\|sa\|gikk\|til\|sko\|len` | — |
 | `n` | `native` (H, Ess) eller `intl` (B, E♭) | `native` |

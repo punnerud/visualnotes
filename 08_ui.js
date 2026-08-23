@@ -10,6 +10,8 @@ function curInstr() { return INSTR_BY_ID[state.instrId] || INSTR_BY_ID.tromp_bb;
    blikket over på notene og beholde grepet som en liten støtte. */
 function fingScale() { return clamp(state.fingSize, 0, 100) / 100; }
 function showsFing() { return state.fingSize > 0; }
+/* Notebåndet skaleres på samme vis: 0 gir bare grep, 100 full notelinje. */
+function noteScale() { return clamp(state.noteSize, 0, 100) / 100; }
 /* 'h' = tonene glir sidelengs, 'v' = de faller nedover. Auto følger instrumentet. */
 function curDir() { return state.dir === 'h' || state.dir === 'v' ? state.dir : defaultDirection(curInstr()); }
 /* Tonen slik den skal leses på valgt instrument.
@@ -105,11 +107,11 @@ function renderStrip() {
     strip.appendChild(lane);
     host = lane;
     // Båndet krysser tvers over ved landingslinja, og kortene faller bak det
-    band.className = 'sband overlay';
+    band.className = 'sband overlay' + (state.noteSize ? '' : ' noteless');
     band.style.top = (V_PLAYHEAD * 100).toFixed(1) + '%';
     strip.appendChild(band);
   } else {
-    band.className = 'sband inflow';
+    band.className = 'sband inflow' + (state.noteSize ? '' : ' noteless');
     band.style.top = '';
     strip.parentNode.insertBefore(band, strip.nextSibling);
   }
@@ -185,7 +187,8 @@ let vY = 0, sX = 0, sSegs = [], beatStart = [], beatTotal = 0;
 /* Alle kortene er like høye. Varigheten leses av notebåndet under, og like
    høye kort gjør at man ser flere av de kommende grepene. */
 function cardH() { return Math.max(44, (86 + state.air * 24) * fingScale()); }
-function ppbS() { return 56 + state.air * 40; }
+function ppbSBase() { return 56 + state.air * 40; }
+function ppbS() { return ppbSBase() * noteScale(); }
 
 /* Notebåndet: én sammenhengende notelinje der bredden følger varigheten.
    Segmentene ligger inntil hverandre, så x blir nøyaktig proporsjonal med tida. */
@@ -194,14 +197,15 @@ function renderStaffBand() {
   if (!lane) return;
   lane.innerHTML = '';
   const ins = curInstr();
-  const ppb = ppbS();
+  const k = noteScale();
+  const ppb = ppbSBase();
   sSegs = state.events.map((e, i) => {
     const el = document.createElement('div');
     el.className = 'sseg' + (e.rest ? ' rest' : '');
-    const w = e.beats * ppb;
-    el.style.width = w.toFixed(2) + 'px';
+    const w = e.beats * ppb;                       // tegnebredde, før skalering
+    el.style.width = (w * k).toFixed(2) + 'px';
     el.innerHTML = staffSVG(e.rest ? null : writtenOf(e), e.dur, e.dot, ins.clef, w,
-      { cont: true, headX: S_HEAD, bar: e.bar && state.showBars });
+      { cont: true, headX: S_HEAD, bar: e.bar && state.showBars, scale: k });
     el.addEventListener('click', () => { stopIfPlaying(); go(i); });
     lane.appendChild(el);
     return el;
@@ -211,7 +215,7 @@ function renderStaffBand() {
 }
 function sOffset(beatPos) {
   const w = ($('sband') && $('sband').clientWidth) || 1;   // båndets egen bredde, uansett plassering
-  return w / 2 - beatPos * ppbS() - S_HEAD;
+  return w / 2 - beatPos * ppbS() - S_HEAD * noteScale();
 }
 function sLaneStyle(transition, x) {
   const lane = $('slane');
@@ -223,7 +227,7 @@ function sLaneStyle(transition, x) {
 /* Hvilket taktslag som ligger på spillehodet ved en gitt forskyvning */
 function beatAtBandOffset(x) {
   const w = ($('sband') && $('sband').clientWidth) || 1;
-  return (w / 2 - S_HEAD - x) / ppbS();
+  return (w / 2 - S_HEAD * noteScale() - x) / ppbS();
 }
 /* Invers av beatAtIndexF: fra taktslag til (brøkdels) tonenummer */
 function indexAtBeat(beat) {
@@ -720,6 +724,9 @@ function renderSettings() {
   b.appendChild(rangeRow('ui.fingSize', 0, 100, 5, state.fingSize,
     v => (v === 0 ? T('ui.off') : v + ' %'),
     v => { state.fingSize = Math.round(v); saveState(); rebuildAll(); syncUrl(); }, true));
+  b.appendChild(rangeRow('ui.noteSize', 0, 100, 5, state.noteSize,
+    v => (v === 0 ? T('ui.off') : v + ' %'),
+    v => { state.noteSize = Math.round(v); saveState(); rebuildAll(); syncUrl(); }, true));
   b.appendChild(switchRow('ui.showBars', null, state.showBars, v => { state.showBars = v; saveState(); rebuildAll(); }));
   b.appendChild(switchRow('ui.showOct', null, state.showOct, v => { state.showOct = v; saveState(); rebuildAll(); }));
 
@@ -856,7 +863,8 @@ function instrCatalog() {
 /* Valgene som er satt nå, i samme form som URL-en bruker, så modellen kan
    ta dem med videre i stedet for å tilbakestille dem. */
 function settingBits() {
-  const bits = ['l=' + state.lang, 'ts=' + state.ts, 'bpm=' + state.bpm, 'fs=' + state.fingSize];
+  const bits = ['l=' + state.lang, 'ts=' + state.ts, 'bpm=' + state.bpm,
+                'fs=' + state.fingSize, 'ns=' + state.noteSize];
   if (state.pitchMode !== 'written') bits.push('p=c');
   if (state.transpose) bits.push('k=' + state.transpose);
   if (state.dir !== 'auto') bits.push('dir=' + state.dir);
@@ -914,6 +922,7 @@ p=    w (default) means the tokens are exactly what the player reads on the chos
 w=    optional lyric syllables, one per note, separated by |
 fs=   fingering size in percent, 0-100. 100 is the full chart, 40 leaves a small reminder above
       the letter, 0 shows the notes alone. Use it when I ask for less help or for notes only.
+ns=   notation size in percent, 0-100. 0 hides the staff and leaves the fingerings alone.
 auto=1 starts playback, met=0 turns the metronome off, tone=0 turns the sound off
 
 Rules to follow:

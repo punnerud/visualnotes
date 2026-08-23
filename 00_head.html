@@ -109,23 +109,28 @@
      under kortene i vannrett modus, og som et bånd tvers over ved landingslinja
      i fallende modus, der kortene faller bak det. */
   .sband{
-    position:relative;height:94px;overflow:visible;touch-action:none;cursor:grab;
+    position:relative;height:calc(94px * var(--ns,1));overflow:visible;touch-action:none;cursor:grab;
     background:var(--paper);
     border-top:3px solid var(--gold);border-bottom:1px solid rgba(28,23,18,.25);
   }
   .sband.inflow{margin:0 0 10px}
+  .sband.inflow.noteless{display:none}          /* uten noter trengs ingen stripe under kortene */
+  .sband.overlay.noteless{cursor:default}       /* i fallende modus står gullstreken igjen som landingslinje */
+  .sband.overlay.noteless + .splayhead,.sband.overlay.noteless~.splayhead{opacity:.7}
   .sband.grabbing{cursor:grabbing}
   .sband.grabbing .sseg{cursor:grabbing}
   .sband.overlay{position:absolute;left:0;right:0;z-index:2;box-shadow:0 10px 26px rgba(0,0,0,.45)}
   .swin{position:absolute;inset:0;overflow:hidden}
-  .slane{position:absolute;left:0;top:8px;height:78px;display:flex;will-change:transform}
-  .sseg{flex:0 0 auto;height:78px;cursor:pointer;transition:opacity .15s ease}
+  .slane{position:absolute;left:0;top:calc(8px * var(--ns,1));height:calc(78px * var(--ns,1));
+    display:flex;will-change:transform}
+  .sseg{flex:0 0 auto;height:calc(78px * var(--ns,1));cursor:pointer;transition:opacity .15s ease}
   .sseg.done{opacity:.42}
   .sseg.on{opacity:1;background:rgba(242,178,52,.22)}
   .sseg:hover{background:rgba(242,178,52,.12)}
   .sseg svg{display:block}
   .splayhead{
-    position:absolute;left:50%;top:-14px;bottom:0;width:2px;margin-left:-1px;z-index:3;
+    position:absolute;left:50%;top:-14px;height:calc(14px + 94px * var(--ns,1));
+    width:2px;margin-left:-1px;z-index:3;
     background:var(--gold);border-radius:2px;pointer-events:none;
     box-shadow:0 0 10px rgba(242,178,52,.9);
   }
