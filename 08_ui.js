@@ -1158,7 +1158,7 @@ function renderAi() {
    Man drar i lydforsinkelsen til prikken blinker i samme øyeblikk som klikket. */
 function calibratorRow() {
   const row = document.createElement('div');
-  row.className = 'row';
+  row.className = 'row subrow';       // hører til lydforsinkelsen over
   row.innerHTML = `<label>${esc(T('ui.calibrate'))}<span class="sub">${esc(T('ui.calibrateSub'))}</span></label>`;
   const wrap = document.createElement('div');
   wrap.className = 'calib';

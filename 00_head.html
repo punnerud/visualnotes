@@ -228,6 +228,9 @@
   .row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 0;
     border-bottom:1px solid rgba(251,247,238,.1);transition:opacity .2s ease}
   .row:last-child{border-bottom:0}
+  /* En rad som hører til raden over: rykket inn, med en strek som binder dem sammen */
+  .subrow{margin-left:14px;padding-left:12px;border-left:2px solid rgba(242,178,52,.4)}
+  .subrow label{font-size:13px}
   .row label{font-size:14px;font-weight:700}
   .row .sub{display:block;font-size:11.5px;font-weight:600;color:var(--sky);opacity:.8;margin-top:2px}
   .seg{display:flex;flex-wrap:wrap;gap:6px}
@@ -255,8 +258,8 @@
   .switch::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:var(--paper);transition:transform .16s ease}
   .switch.on{background:var(--gold)}
   .switch.on::after{transform:translateX(22px)}
-  .calib{display:inline-flex;align-items:center;gap:9px}
-  .calibbtn{padding:8px 13px;font-size:13px;background:rgba(251,247,238,.12);
+  .calib{display:inline-flex;align-items:center;gap:9px;flex:0 0 auto}
+  .calibbtn{padding:8px 13px;font-size:13px;white-space:nowrap;background:rgba(251,247,238,.12);
     border:1px solid rgba(251,247,238,.22);border-radius:999px;color:var(--paper)}
   .calibdot{width:17px;height:17px;border-radius:50%;background:rgba(251,247,238,.16);
     border:2px solid rgba(251,247,238,.3)}
