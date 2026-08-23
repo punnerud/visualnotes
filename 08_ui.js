@@ -70,7 +70,7 @@ function makeCard(e, i, opts) {
   if (outOfRange) el.classList.add('out');
 
   const name = e.rest ? '–'
-    : esc(dispNote(w)) + (state.showOct ? `<small>${w.oct}</small>` : '');
+    : esc(dispNote(w)) + (state.oct ? `<small>${w.oct}</small>` : '');
   const staff = staffSVG(e.rest ? null : w, e.dur, e.dot, ins.clef, o.vert ? 150 : Math.min(width - 8, 150));
   const lyric = (state.words && state.words[i]) ? esc(state.words[i]) : '';
   el.innerHTML =
@@ -759,7 +759,8 @@ function renderSettings() {
     v => (v === 0 ? T('ui.off') : v + ' %'),
     v => { state.noteSize = Math.round(v); saveState(); rebuildAll(); syncUrl(); }, true, 100));
   b.appendChild(switchRow('ui.showBars', null, state.showBars, v => { state.showBars = v; saveState(); rebuildAll(); }, true));
-  b.appendChild(switchRow('ui.showOct', null, state.showOct, v => { state.showOct = v; saveState(); rebuildAll(); }, true));
+  b.appendChild(switchRow('ui.showOct', 'ui.showOctSub', state.oct,
+    v => { state.oct = v; saveState(); rebuildAll(); syncUrl(); }, true));
 
   const tr = document.createElement('div');
   tr.className = 'row';
@@ -897,6 +898,8 @@ function instrCatalog() {
 function settingBits() {
   const bits = ['l=' + state.lang, 'ts=' + state.ts, 'bpm=' + state.bpm,
                 'fs=' + state.fingSize, 'ns=' + state.noteSize, 'sp=' + state.airPct];
+  if (state.oct) bits.push('oct=1');
+  if (!state.showBars) bits.push('bars=0');
   if (state.pitchMode !== 'written') bits.push('p=c');
   if (state.transpose) bits.push('k=' + state.transpose);
   if (state.dir !== 'auto') bits.push('dir=' + state.dir);
@@ -956,6 +959,8 @@ fs=   fingering size in percent, 0-200, where 100 is the normal size. 40 leaves 
       above the letter, 0 shows the notes alone, 160 makes the chart big for a beginner.
 ns=   notation size in percent, 0-200, same scale. 0 hides the staff and leaves the fingerings alone.
 sp=   spacing between the notes in percent, 0-200. 100 is normal, 0 packs them tight.
+oct=1 adds the octave number after the note letter (off by default — children read the letter alone)
+bars=0 hides the bar lines
 auto=1 starts playback, met=0 turns the metronome off, tone=0 turns the sound off
 
 Rules to follow:

@@ -5,11 +5,11 @@ const COOKIE = 'visualnotes';
 const DEFAULTS = {
   lang: 'no', instrId: 'tromp_bb', naming: 'native', pitchMode: 'written', recorderGerman: false,
   bpm: 100, ts: '4/4', upbeat: 0, auto: false, metronome: true, tone: true, countIn: 4,
-  airPct: 100, fingSize: 100, noteSize: 100, showBars: true, showOct: true, transpose: 0,
+  airPct: 100, fingSize: 100, noteSize: 100, showBars: true, oct: false, transpose: 0,
   dir: 'auto', audioOffset: 0, pRows: 11, pZoom: 0.8, pLand: true,
 };
 const PERSIST = ['lang', 'instrId', 'naming', 'pitchMode', 'recorderGerman', 'bpm', 'auto',
-                 'metronome', 'tone', 'countIn', 'airPct', 'fingSize', 'noteSize', 'showBars', 'showOct',
+                 'metronome', 'tone', 'countIn', 'airPct', 'fingSize', 'noteSize', 'showBars', 'oct',
                  'dir', 'audioOffset', 'pRows', 'pZoom', 'pLand'];
 const state = Object.assign({}, DEFAULTS, {
   title: '', songId: null, sourceText: '', events: [], cur: 0, words: null, parseErrors: [],
@@ -139,6 +139,7 @@ function applyQuery(q) {
   if (q.fs !== undefined) state.fingSize = clamp(parseInt(q.fs, 10) || 0, 0, 200);
   if (q.ns !== undefined) state.noteSize = clamp(parseInt(q.ns, 10) || 0, 0, 200);
   if (q.bars !== undefined) state.showBars = q.bars !== '0';
+  if (q.oct !== undefined) state.oct = q.oct !== '0';
   if (q.w) state.words = q.w.split('|').map(x => x.trim());
   if (q.t) state.title = q.t;
 
@@ -175,6 +176,8 @@ function buildUrl() {
   if (state.fingSize !== 100) add('fs', state.fingSize);
   if (state.noteSize !== 100) add('ns', state.noteSize);
   if (state.airPct !== 100) add('sp', state.airPct);
+  if (state.oct) add('oct', 1);
+  if (!state.showBars) add('bars', 0);
   if (state.audioOffset) add('off', state.audioOffset);
   if (state.transpose) add('k', state.transpose);
   if (state.auto !== DEFAULTS.auto) add('auto', state.auto ? 1 : 0);
