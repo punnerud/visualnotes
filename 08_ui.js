@@ -781,10 +781,40 @@ function renderSettings() {
   });
   tr.appendChild(seg); b.appendChild(tr);
 
+  b.appendChild(resetRow());
+
   const about = document.createElement('p');
   about.className = 'hint';
   about.innerHTML = T('ui.about');
   b.appendChild(about);
+}
+/* Nullstilling, med et bekreftelsessteg i samme rad */
+function resetRow() {
+  const row = document.createElement('div');
+  row.className = 'row';
+  const lbl = document.createElement('label');
+  const box = document.createElement('div');
+  box.className = 'dangerrow';
+  const first = document.createElement('button');
+  first.className = 'danger';
+  first.textContent = T('ui.reset');
+  const yes = document.createElement('button');
+  yes.className = 'danger go';
+  yes.textContent = T('ui.resetDo');
+  const no = document.createElement('button');
+  no.className = 'danger';
+  no.textContent = T('ui.cancel');
+  const ask = (on) => {
+    lbl.textContent = on ? T('ui.resetAsk') : '';
+    first.hidden = on; yes.hidden = !on; no.hidden = !on;
+  };
+  first.addEventListener('click', () => ask(true));
+  no.addEventListener('click', () => ask(false));
+  yes.addEventListener('click', () => { resetSettings(); renderSettings(); });
+  ask(false);
+  box.appendChild(first); box.appendChild(yes); box.appendChild(no);
+  row.appendChild(lbl); row.appendChild(box);
+  return row;
 }
 function renderSongs() {
   $('songsTitle').textContent = T('ui.songs');
@@ -873,6 +903,63 @@ function renderShare() {
   err.textContent = state.parseErrors.length ? T('ui.parseErrors', { list: state.parseErrors.slice(0, 8).join(' ') }) : '';
   err.hidden = !state.parseErrors.length;
   b.appendChild(err);
+
+  b.appendChild(qrSection());
+}
+
+/* QR-kode: instruktøren velger hva som skal deles, og viser den stor på skjermen. */
+function qrSection() {
+  const wrap = document.createElement('div');
+  const head = document.createElement('div');
+  head.className = 'row';
+  head.innerHTML = `<label>${esc(T('ui.qr'))}<span class="sub">${esc(T('ui.qrSub'))}</span></label>`;
+  const chks = document.createElement('div');
+  chks.className = 'chkrow';
+  const mk = (key, get, set) => {
+    const c = document.createElement('button');
+    c.className = 'chk' + (get() ? ' on' : '');
+    c.textContent = T(key);
+    c.setAttribute('role', 'checkbox');
+    c.setAttribute('aria-checked', get() ? 'true' : 'false');
+    c.addEventListener('click', () => {
+      set(!get());
+      c.classList.toggle('on', get());
+      c.setAttribute('aria-checked', get() ? 'true' : 'false');
+      saveState();
+      note.textContent = (!state.qrSong && !state.qrSet) ? T('ui.qrEmpty') : '';
+    });
+    chks.appendChild(c);
+  };
+  mk('ui.qrSong', () => state.qrSong, v => { state.qrSong = v; });
+  mk('ui.qrSettings', () => state.qrSet, v => { state.qrSet = v; });
+  head.appendChild(chks);
+  wrap.appendChild(head);
+  const row = document.createElement('div');
+  row.className = 'btnrow';
+  const show = document.createElement('button');
+  show.className = 'gold';
+  show.textContent = T('ui.qrShow');
+  show.addEventListener('click', showQr);
+  row.appendChild(show);
+  wrap.appendChild(row);
+  const note = document.createElement('p');
+  note.className = 'hint';
+  note.style.textAlign = 'left';
+  note.textContent = (!state.qrSong && !state.qrSet) ? T('ui.qrEmpty') : '';
+  wrap.appendChild(note);
+  return wrap;
+}
+function showQr() {
+  const url = buildUrl({ song: state.qrSong, settings: state.qrSet });
+  // Færre moduler er lettere å skanne på avstand, så vi tar høyere feilretting
+  // bare når lenka er kort nok til at koden likevel forblir liten.
+  const ecl = qrVersionFor(utf8Bytes(url), 'M') && qrVersionFor(utf8Bytes(url), 'M') <= 8 ? 'M' : 'L';
+  $('qrimg').innerHTML = qrSVG(url, { ecl });
+  $('qrurl').textContent = url;
+  $('qrSizeLbl').textContent = T('ui.qrSize');
+  $('qrSize').value = state.qrSize;
+  document.documentElement.style.setProperty('--qrsize', state.qrSize);
+  $('qrview').hidden = false;
 }
 
 /* ---------------- AI-prompt ----------------

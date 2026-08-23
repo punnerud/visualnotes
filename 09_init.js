@@ -6,11 +6,12 @@ const DEFAULTS = {
   lang: 'no', instrId: 'tromp_bb', naming: 'native', pitchMode: 'written', recorderGerman: false,
   bpm: 100, ts: '4/4', upbeat: 0, auto: false, metronome: true, tone: true, countIn: 4,
   airPct: 100, fingSize: 100, noteSize: 100, showBars: true, oct: false, transpose: 0,
-  dir: 'auto', audioOffset: 0, pRows: 11, pZoom: 0.8, pLand: true,
+  dir: 'auto', audioOffset: 0, qrSong: true, qrSet: true, qrSize: 50,
+  pRows: 11, pZoom: 0.8, pLand: true,
 };
 const PERSIST = ['lang', 'instrId', 'naming', 'pitchMode', 'recorderGerman', 'bpm', 'auto',
                  'metronome', 'tone', 'countIn', 'airPct', 'fingSize', 'noteSize', 'showBars', 'oct',
-                 'dir', 'audioOffset', 'pRows', 'pZoom', 'pLand'];
+                 'dir', 'audioOffset', 'qrSong', 'qrSet', 'qrSize', 'pRows', 'pZoom', 'pLand'];
 const state = Object.assign({}, DEFAULTS, {
   title: '', songId: null, sourceText: '', events: [], cur: 0, words: null, parseErrors: [],
   transposeLocked: false, bpmDefault: 100, aiWish: '',
@@ -157,34 +158,55 @@ function applyQuery(q) {
   if (q.s) { setSource(q.s); return true; }
   return false;
 }
-function buildUrl() {
+/* Lenka kan bygges med bare låten, bare innstillingene, eller begge —
+   det er det QR-koden bruker når en instruktør skal dele én av delene. */
+function buildUrl(opts) {
+  const o = opts || {};
+  const song = o.song !== false, settings = o.settings !== false;
   const p = [];
-  // Tegn som er trygge i en query og gjør lenka lesbar, holdes ukodet
   const add = (k, v) => p.push(k + '=' + encodeURIComponent(v)
     .replace(/%20/g, '+').replace(/%3A/g, ':').replace(/%7C/g, '|')
     .replace(/%2C/g, ',').replace(/%2F/g, '/'));
-  if (state.songId) add('id', state.songId);
-  else add('s', songToTokens(state.events));
-  if (state.title && (!state.songId || state.title !== (SONG_BY_ID[state.songId].title[state.lang] || ''))) add('t', state.title);
-  add('i', state.instrId);
-  add('l', state.lang);
-  if (state.ts !== '4/4') add('ts', state.ts);
-  if (state.upbeat) add('up', state.upbeat);
-  if (state.bpm !== DEFAULTS.bpm) add('bpm', state.bpm);
-  if (state.pitchMode !== 'written') add('p', 'c');
-  if (state.dir !== 'auto') add('dir', state.dir);
-  if (state.fingSize !== 100) add('fs', state.fingSize);
-  if (state.noteSize !== 100) add('ns', state.noteSize);
-  if (state.airPct !== 100) add('sp', state.airPct);
-  if (state.oct) add('oct', 1);
-  if (!state.showBars) add('bars', 0);
-  if (state.audioOffset) add('off', state.audioOffset);
-  if (state.transpose) add('k', state.transpose);
-  if (state.auto !== DEFAULTS.auto) add('auto', state.auto ? 1 : 0);
-  if (state.metronome !== DEFAULTS.metronome) add('met', state.metronome ? 1 : 0);
-  if (state.tone !== DEFAULTS.tone) add('tone', state.tone ? 1 : 0);
-  if (state.words) add('w', state.words.join('|'));
-  return location.origin + location.pathname + '?' + p.join('&');
+  if (song) {
+    if (state.songId) add('id', state.songId);
+    else add('s', songToTokens(state.events));
+    if (state.title && (!state.songId || state.title !== (SONG_BY_ID[state.songId].title[state.lang] || ''))) add('t', state.title);
+    if (state.ts !== '4/4') add('ts', state.ts);
+    if (state.upbeat) add('up', state.upbeat);
+    if (state.bpm !== DEFAULTS.bpm) add('bpm', state.bpm);
+    if (state.words) add('w', state.words.join('|'));
+  }
+  if (settings) {
+    add('i', state.instrId);
+    add('l', state.lang);
+    if (state.pitchMode !== 'written') add('p', 'c');
+    if (state.transpose) add('k', state.transpose);
+    if (state.dir !== 'auto') add('dir', state.dir);
+    if (state.fingSize !== 100) add('fs', state.fingSize);
+    if (state.noteSize !== 100) add('ns', state.noteSize);
+    if (state.airPct !== 100) add('sp', state.airPct);
+    if (state.oct) add('oct', 1);
+    if (!state.showBars) add('bars', 0);
+    if (state.naming !== DEFAULTS.naming) add('n', state.naming);
+    if (state.auto !== DEFAULTS.auto) add('auto', state.auto ? 1 : 0);
+    if (state.metronome !== DEFAULTS.metronome) add('met', state.metronome ? 1 : 0);
+    if (state.tone !== DEFAULTS.tone) add('tone', state.tone ? 1 : 0);
+  }
+  const base = location.protocol === 'file:' ? 'https://punnerud.github.io/visualnotes/'
+                                             : location.origin + location.pathname;
+  return base + (p.length ? '?' + p.join('&') : '');
+}
+/* Tilbake til standard. Cookien slettes, så neste besøk også starter rent. */
+function resetSettings() {
+  stopIfPlaying(); stopCalibration();
+  PERSIST.forEach(k => { state[k] = DEFAULTS[k]; });
+  const nav = langFromNavigator(navigator.language || (navigator.languages || [])[0]);
+  if (nav) state.lang = nav;
+  state.transpose = 0; state.transposeLocked = false;
+  try { document.cookie = COOKIE + '=;path=/;max-age=0;SameSite=Lax'; } catch (e) { /* ignorer */ }
+  autoOctave();
+  rebuildAll();
+  syncUrl();
 }
 function syncUrl() {
   try { history.replaceState(null, '', buildUrl()); } catch (e) { /* ignorer */ }
@@ -305,6 +327,12 @@ function init() {
   $('openSettings').addEventListener('click', () => { renderSettings(); openSheet('settings'); });
   $('openSongs').addEventListener('click', () => { renderSongs(); openSheet('songs'); });
   $('openShare').addEventListener('click', () => { renderShare(); openSheet('share'); });
+  $('qrclose').addEventListener('click', () => { $('qrview').hidden = true; });
+  $('qrSize').addEventListener('input', () => {
+    state.qrSize = clamp(parseInt($('qrSize').value, 10) || 50, 25, 100);
+    document.documentElement.style.setProperty('--qrsize', state.qrSize);
+    saveState();
+  });
   document.querySelectorAll('[data-close]').forEach(b =>
     b.addEventListener('click', () => { stopCalibration(); closeSheet(b.dataset.close); }));
   document.querySelectorAll('.sheet').forEach(s =>
@@ -322,10 +350,11 @@ function init() {
   document.addEventListener('keydown', e => {
     const openSheetEl = document.querySelector('.sheet:not([hidden])');
     if (e.key === 'Escape') {
+      if (!$('qrview').hidden) { $('qrview').hidden = true; return; }
       if (openSheetEl) { stopCalibration(); openSheetEl.hidden = true; return; }
       if (!$('printview').hidden) { $('printview').hidden = true; return; }
     }
-    if (openSheetEl || !$('printview').hidden) return;
+    if (openSheetEl || !$('printview').hidden || !$('qrview').hidden) return;
     if (/^(INPUT|TEXTAREA|SELECT)$/.test((e.target && e.target.tagName) || '')) return;
     // I loddrett modus ligger neste tone over, så Opp = neste
     if (e.key === 'ArrowRight' || e.key === 'ArrowUp') { e.preventDefault(); stopIfPlaying(); go(state.cur + 1); }

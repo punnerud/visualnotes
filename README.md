@@ -79,6 +79,15 @@ trykk. Trykker du flere ganger på rad, blir den stående gjennomsiktig så du s
 [`?id=lisa&fs=40`](https://punnerud.github.io/visualnotes/?id=lisa&fs=40) eller
 [`?id=lisa&ns=0`](https://punnerud.github.io/visualnotes/?id=lisa&ns=0).
 
+**QR-kode** (🔗 → QR-kode). Kryss av for om koden skal inneholde **låten**, **innstillingene** eller
+begge, og vis den stor på skjermen — elevene skanner den med kameraet fra plassen sin. En slider nederst
+gjør koden mindre eller så stor som skjermen tillater; den starter på halve skjermen. Deler du bare
+innstillingene, får elevene instrument, størrelser og språk uten å bytte låt; deler du bare låten, får
+de melodien inn i sitt eget oppsett.
+
+**Nullstill innstillinger** ligger nederst i ⚙, med et bekreftelsessteg. Den sletter også cookien, så
+neste besøk starter rent.
+
 **Utskrift** (🖨) viser arket i faktisk størrelse med de samme margene som skrives ut, så
 forhåndsvisningen er det du får. Standard er liggende A4 på 80 %. En linje med toner deles aldri over
 et sideskift. Velg «Standard» marger i utskriftsdialogen og slå av topp- og bunntekst.
@@ -266,6 +275,7 @@ python3 -m http.server 8080   # åpne http://localhost:8080
 | `04_notation.js` | notehoder, haler, faner, punkter, pauser, hjelpelinjer |
 | `05_songs.js` | sangbiblioteket |
 | `06_url.js` | tolking og bygging av URL-formatet |
+| `06b_qr.js` | QR-koder: Reed–Solomon, maskering og SVG |
 | `07_audio.js` | tone, metronom og avspillingsplanlegger |
 | `08_ui.js` | tonestripe, paneler og utskrift |
 | `09_init.js` | tilstand, cookie, URL og oppstart |

@@ -27,6 +27,7 @@ jobs:
           node test_songs.js
           node test_bundle.js
           node test_audio.js
+          node test_qr.js
 
       - name: index.html må være i synk med kildene
         run: |

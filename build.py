@@ -8,7 +8,7 @@ import json, os, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PARTS_JS = ['01_core.js', '02_i18n.js', '03_fingering.js', '04_notation.js',
-            '05_songs.js', '06_url.js', '07_audio.js', '08_ui.js', '09_init.js']
+            '05_songs.js', '06_url.js', '06b_qr.js', '07_audio.js', '08_ui.js', '09_init.js']
 LANGS = ['no', 'sv', 'da', 'en']
 
 

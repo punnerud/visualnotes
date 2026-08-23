@@ -1,12 +1,12 @@
 /* Felles testhjelper: laster de rene modulene inn i en vm-kontekst. */
 const fs = require('fs'), vm = require('vm'), path = require('path');
 const PURE = ['01_core.js', '02_i18n.js', '03_fingering.js', '04_notation.js',
-              '05_songs.js', '06_url.js', '07_audio.js'];
+              '05_songs.js', '06_url.js', '06b_qr.js', '07_audio.js'];
 
 function load(extraGlobals) {
   const ctx = vm.createContext(Object.assign({
     console, state: { lang: 'no', naming: 'native' },
-    window: {}, navigator: { language: 'nb-NO' },
+    window: {}, navigator: { language: 'nb-NO' }, unescape, encodeURIComponent,
   }, extraGlobals || {}));
   const src = PURE.map(f => fs.readFileSync(path.join(__dirname, f), 'utf8')).join('\n');
   // Toppnivå-navn ligger i skriptets eget scope; eksporter dem til konteksten.
