@@ -235,7 +235,14 @@
   }
   select option{background:var(--navy-deep);color:var(--paper)}
   textarea{width:100%;min-height:90px;resize:vertical;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px}
-  input[type=range]{width:150px;accent-color:var(--gold)}
+  input[type=range]{width:150px;accent-color:var(--gold);display:block}
+  .rangewrap{position:relative;display:inline-block;flex:0 0 auto}
+  /* Rødt merke der vanlig størrelse ligger, så lenge man ikke står på den */
+  .rangewrap.off::after{
+    content:"";position:absolute;left:var(--mark,50%);top:50%;
+    transform:translate(-50%,-50%);width:3px;height:17px;border-radius:2px;
+    background:#ff6b6b;box-shadow:0 0 5px rgba(255,107,107,.7);pointer-events:none;
+  }
   .switch{width:52px;height:30px;border-radius:999px;background:rgba(251,247,238,.18);position:relative;flex:0 0 auto;border:0}
   .switch::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:var(--paper);transition:transform .16s ease}
   .switch.on{background:var(--gold)}

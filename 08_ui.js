@@ -593,19 +593,34 @@ function segRow(labelKey, options, value, onPick, subKey) {
   row.appendChild(seg);
   return row;
 }
-function rangeRow(labelKey, min, max, step, value, fmtFn, onInput, peek) {
+/* snapTo: verdien slideren fester seg til, med et rødt merke der så lenge man
+   ikke står nøyaktig på den. */
+function rangeRow(labelKey, min, max, step, value, fmtFn, onInput, peek, snapTo) {
   const row = document.createElement('div');
   row.className = 'row';
   row.innerHTML = `<label>${esc(T(labelKey))}<span class="sub" data-v>${esc(fmtFn(value))}</span></label>`;
   const inp = document.createElement('input');
   inp.type = 'range'; inp.min = min; inp.max = max; inp.step = step; inp.value = value;
+  const wrap = document.createElement('span');
+  wrap.className = 'rangewrap';
+  const hasSnap = snapTo !== undefined && snapTo !== null;
+  const zone = (max - min) * 0.025;
+  const mark = v => {
+    if (!hasSnap) return;
+    wrap.classList.toggle('off', Math.abs(v - snapTo) > 1e-9);
+  };
+  if (hasSnap) wrap.style.setProperty('--mark', ((snapTo - min) / (max - min) * 100).toFixed(2) + '%');
+  mark(value);
   inp.addEventListener('input', () => {
-    const v = parseFloat(inp.value);
+    let v = parseFloat(inp.value);
+    if (hasSnap && Math.abs(v - snapTo) <= zone && v !== snapTo) { v = snapTo; inp.value = String(v); }
+    mark(v);
     row.querySelector('[data-v]').textContent = fmtFn(v);
     onInput(v);
   });
   if (peek) attachPeek(row, inp);
-  row.appendChild(inp);
+  wrap.appendChild(inp);
+  row.appendChild(wrap);
   return row;
 }
 
@@ -721,12 +736,12 @@ function renderSettings() {
   b.appendChild(calibratorRow());
   b.appendChild(rangeRow('ui.air', 0, 1.6, 0.1, state.air, v => Math.round(v * 100) + ' %',
     v => { state.air = v; saveState(); rebuildAll(); }, true));
-  b.appendChild(rangeRow('ui.fingSize', 0, 200, 5, state.fingSize,
+  b.appendChild(rangeRow('ui.fingSize', 0, 200, 1, state.fingSize,
     v => (v === 0 ? T('ui.off') : v + ' %'),
-    v => { state.fingSize = Math.round(v); saveState(); rebuildAll(); syncUrl(); }, true));
-  b.appendChild(rangeRow('ui.noteSize', 0, 200, 5, state.noteSize,
+    v => { state.fingSize = Math.round(v); saveState(); rebuildAll(); syncUrl(); }, true, 100));
+  b.appendChild(rangeRow('ui.noteSize', 0, 200, 1, state.noteSize,
     v => (v === 0 ? T('ui.off') : v + ' %'),
-    v => { state.noteSize = Math.round(v); saveState(); rebuildAll(); syncUrl(); }, true));
+    v => { state.noteSize = Math.round(v); saveState(); rebuildAll(); syncUrl(); }, true, 100));
   b.appendChild(switchRow('ui.showBars', null, state.showBars, v => { state.showBars = v; saveState(); rebuildAll(); }));
   b.appendChild(switchRow('ui.showOct', null, state.showOct, v => { state.showOct = v; saveState(); rebuildAll(); }));
 

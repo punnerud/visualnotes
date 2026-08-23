@@ -64,7 +64,8 @@ klikket høres. Verdien huskes per enhet.
 
 **Fra grep til noter.** «Størrelse på grep» og «Størrelse på noter» i innstillingene trapper de to
 delene opp og ned hver for seg, fra av til dobbel størrelse — vanlig størrelse ligger midt på slideren,
-så det er like lett å gjøre noe større som mindre. Skru grepene ned, og bare notene står igjen;
+så det er like lett å gjøre noe større som mindre. Slideren fester seg til 100 %, og et rødt merke
+viser hvor den står så lenge du er et annet sted. Skru grepene ned, og bare notene står igjen;
 skru notene ned, og eleven ser bare grep. Notebåndet krymper i begge retninger samtidig, så notene står
 like tett som de er store.
 Kortene blir både lavere og smalere med, så flere toner er synlige og notebåndet får mer plass etter
