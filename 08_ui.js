@@ -8,10 +8,10 @@ function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
 function curInstr() { return INSTR_BY_ID[state.instrId] || INSTR_BY_ID.tromp_bb; }
 /* Grepdiagrammet kan trappes gradvis ned til ingenting, så man kan flytte
    blikket over på notene og beholde grepet som en liten støtte. */
-function fingScale() { return clamp(state.fingSize, 0, 100) / 100; }
+function fingScale() { return clamp(state.fingSize, 0, 200) / 100; }
 function showsFing() { return state.fingSize > 0; }
 /* Notebåndet skaleres på samme vis: 0 gir bare grep, 100 full notelinje. */
-function noteScale() { return clamp(state.noteSize, 0, 100) / 100; }
+function noteScale() { return clamp(state.noteSize, 0, 200) / 100; }
 /* 'h' = tonene glir sidelengs, 'v' = de faller nedover. Auto følger instrumentet. */
 function curDir() { return state.dir === 'h' || state.dir === 'v' ? state.dir : defaultDirection(curInstr()); }
 /* Tonen slik den skal leses på valgt instrument.
@@ -721,10 +721,10 @@ function renderSettings() {
   b.appendChild(calibratorRow());
   b.appendChild(rangeRow('ui.air', 0, 1.6, 0.1, state.air, v => Math.round(v * 100) + ' %',
     v => { state.air = v; saveState(); rebuildAll(); }, true));
-  b.appendChild(rangeRow('ui.fingSize', 0, 100, 5, state.fingSize,
+  b.appendChild(rangeRow('ui.fingSize', 0, 200, 5, state.fingSize,
     v => (v === 0 ? T('ui.off') : v + ' %'),
     v => { state.fingSize = Math.round(v); saveState(); rebuildAll(); syncUrl(); }, true));
-  b.appendChild(rangeRow('ui.noteSize', 0, 100, 5, state.noteSize,
+  b.appendChild(rangeRow('ui.noteSize', 0, 200, 5, state.noteSize,
     v => (v === 0 ? T('ui.off') : v + ' %'),
     v => { state.noteSize = Math.round(v); saveState(); rebuildAll(); syncUrl(); }, true));
   b.appendChild(switchRow('ui.showBars', null, state.showBars, v => { state.showBars = v; saveState(); rebuildAll(); }));
@@ -920,9 +920,9 @@ bpm=  tempo, 30-240                             k=   transpose everything n semi
 p=    w (default) means the tokens are exactly what the player reads on the chosen instrument.
       p=c means the tokens are concert pitch and get transposed for each instrument.
 w=    optional lyric syllables, one per note, separated by |
-fs=   fingering size in percent, 0-100. 100 is the full chart, 40 leaves a small reminder above
-      the letter, 0 shows the notes alone. Use it when I ask for less help or for notes only.
-ns=   notation size in percent, 0-100. 0 hides the staff and leaves the fingerings alone.
+fs=   fingering size in percent, 0-200, where 100 is the normal size. 40 leaves a small reminder
+      above the letter, 0 shows the notes alone, 160 makes the chart big for a beginner.
+ns=   notation size in percent, 0-200, same scale. 0 hides the staff and leaves the fingerings alone.
 auto=1 starts playback, met=0 turns the metronome off, tone=0 turns the sound off
 
 Rules to follow:

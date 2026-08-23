@@ -42,7 +42,7 @@
 
   /* ---------- Tonerekka ---------- */
   .strip{
-    display:flex;align-items:stretch;gap:8px;width:100%;
+    display:flex;align-items:stretch;gap:8px;width:100%;flex:0 1 auto;min-height:0;
     overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;
     padding:14px calc(50vw - 60px) 12px;
     scrollbar-width:thin;cursor:grab;
@@ -52,7 +52,7 @@
   .strip::-webkit-scrollbar-thumb{background:rgba(251,247,238,.25);border-radius:4px}
 
   .note{
-    flex:0 0 auto;width:var(--w,86px);
+    flex:0 0 auto;width:var(--w,86px);max-height:100%;
     background:var(--paper);color:var(--ink);
     border:2px solid var(--line);border-radius:18px;
     padding:10px 4px 6px;
@@ -60,8 +60,11 @@
     cursor:pointer;
     transition:transform .18s ease,box-shadow .06s ease,border-color .06s ease;
   }
+  /* Grepet kan gjøres dobbelt så stort, men skal ikke spise hele skjermen */
+  /* Grepet kan gjøres dobbelt så stort. Blir det ikke plass, krymper det i stedet
+     for å bli klippet: kortet kan ikke bli høyere enn stripa, og hullet skrumper med. */
   .note .fingwrap{height:calc(clamp(92px,21vh,164px) * var(--fs,1));width:100%;
-    display:flex;align-items:center;justify-content:center}
+    flex:0 1 auto;min-height:0;display:flex;align-items:center;justify-content:center}
   .note .fingwrap svg{height:100%;width:auto;max-width:100%}
   .note .fingwrap svg.fing-keys{height:auto;width:100%;max-width:calc(158px * var(--fs,1))}
   .note .fingwrap svg.fing-slide{height:auto;width:100%;max-width:calc(142px * var(--fs,1))}
@@ -109,11 +112,12 @@
      under kortene i vannrett modus, og som et bånd tvers over ved landingslinja
      i fallende modus, der kortene faller bak det. */
   .sband{
-    position:relative;height:calc(94px * var(--ns,1));overflow:visible;touch-action:none;cursor:grab;
+    position:relative;height:min(calc(94px * var(--ns,1)),34vh);overflow:visible;
+    touch-action:none;cursor:grab;
     background:var(--paper);
     border-top:3px solid var(--gold);border-bottom:1px solid rgba(28,23,18,.25);
   }
-  .sband.inflow{margin:0 0 10px}
+  .sband.inflow{margin:0 0 10px;flex:0 0 auto}   /* notelinja skal ikke klemmes flat */
   .sband.inflow.noteless{display:none}          /* uten noter trengs ingen stripe under kortene */
   .sband.overlay.noteless{cursor:default}       /* i fallende modus står gullstreken igjen som landingslinje */
   .sband.overlay.noteless + .splayhead,.sband.overlay.noteless~.splayhead{opacity:.7}
@@ -122,7 +126,7 @@
   .sband.overlay{position:absolute;left:0;right:0;z-index:2;box-shadow:0 10px 26px rgba(0,0,0,.45)}
   .swin{position:absolute;inset:0;overflow:hidden}
   .slane{position:absolute;left:0;top:calc(8px * var(--ns,1));height:calc(78px * var(--ns,1));
-    display:flex;will-change:transform}
+    display:flex;will-change:transform;align-items:flex-start}
   .sseg{flex:0 0 auto;height:calc(78px * var(--ns,1));cursor:pointer;transition:opacity .15s ease}
   .sseg.done{opacity:.42}
   .sseg.on{opacity:1;background:rgba(242,178,52,.22)}

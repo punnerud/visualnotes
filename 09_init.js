@@ -134,8 +134,8 @@ function applyQuery(q) {
   if (q.count !== undefined) state.countIn = clamp(parseInt(q.count, 10) || 0, 0, 8);
   if (q.air !== undefined) state.air = clamp(parseFloat(q.air), 0, 1.6);
   if (q.fing !== undefined) state.fingSize = q.fing === '0' ? 0 : 100;   // eldre lenker
-  if (q.fs !== undefined) state.fingSize = clamp(parseInt(q.fs, 10) || 0, 0, 100);
-  if (q.ns !== undefined) state.noteSize = clamp(parseInt(q.ns, 10) || 0, 0, 100);
+  if (q.fs !== undefined) state.fingSize = clamp(parseInt(q.fs, 10) || 0, 0, 200);
+  if (q.ns !== undefined) state.noteSize = clamp(parseInt(q.ns, 10) || 0, 0, 200);
   if (q.bars !== undefined) state.showBars = q.bars !== '0';
   if (q.w) state.words = q.w.split('|').map(x => x.trim());
   if (q.t) state.title = q.t;

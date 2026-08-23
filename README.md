@@ -63,7 +63,8 @@ takten som en metronom og lar to prikker lyse vekselvis, og du drar til prikken 
 klikket høres. Verdien huskes per enhet.
 
 **Fra grep til noter.** «Størrelse på grep» og «Størrelse på noter» i innstillingene trapper de to
-delene opp og ned hver for seg, fra full størrelse til av. Skru grepene ned, og bare notene står igjen;
+delene opp og ned hver for seg, fra av til dobbel størrelse — vanlig størrelse ligger midt på slideren,
+så det er like lett å gjøre noe større som mindre. Skru grepene ned, og bare notene står igjen;
 skru notene ned, og eleven ser bare grep. Notebåndet krymper i begge retninger samtidig, så notene står
 like tett som de er store.
 Kortene blir både lavere og smalere med, så flere toner er synlige og notebåndet får mer plass etter
@@ -104,8 +105,8 @@ Alt kan settes med GET-parametere. Korte navn er de kanoniske; de lange i parent
 | `dir` | retning: `auto`, `h` (sidelengs) eller `v` (fallende) | `auto` |
 | `off` | lydforsinkelse i millisekunder, −300…300 | `0` |
 | `air` | luft mellom notene, `0`–`1.6` | `0.6` |
-| `fs` | størrelse på grepdiagrammet i prosent, `0`–`100`. `0` gir bare noter | `100` |
-| `ns` | størrelse på notebåndet i prosent, `0`–`100`. `0` gir bare grep | `100` |
+| `fs` | størrelse på grepdiagrammet i prosent, `0`–`200`. `0` gir bare noter | `100` |
+| `ns` | størrelse på notebåndet i prosent, `0`–`200`. `0` gir bare grep | `100` |
 | `bars` | `0` skjuler taktstrekene | `1` |
 | `w` (`words`) | stavelser under notene: `Li\|sa\|gikk\|til\|sko\|len` | — |
 | `n` | `native` (H, Ess) eller `intl` (B, E♭) | `native` |
