@@ -6,6 +6,10 @@ function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '
 function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
 
 function curInstr() { return INSTR_BY_ID[state.instrId] || INSTR_BY_ID.tromp_bb; }
+/* Grepdiagrammet kan trappes gradvis ned til ingenting, så man kan flytte
+   blikket over på notene og beholde grepet som en liten støtte. */
+function fingScale() { return clamp(state.fingSize, 0, 100) / 100; }
+function showsFing() { return state.fingSize > 0; }
 /* 'h' = tonene glir sidelengs, 'v' = de faller nedover. Auto følger instrumentet. */
 function curDir() { return state.dir === 'h' || state.dir === 'v' ? state.dir : defaultDirection(curInstr()); }
 /* Tonen slik den skal leses på valgt instrument.
@@ -25,8 +29,9 @@ function soundingMidi(e) {
 function fingKind(res) { return res ? res.kind : null; }
 
 function cardMinWidth(kind) {
-  if (kind === 'keys') return 158;
-  if (kind === 'slide') return 142;
+  const f = fingScale();
+  if (kind === 'keys') return Math.max(62, 158 * f);
+  if (kind === 'slide') return Math.max(62, 142 * f);
   return 62;
 }
 function cardWidth(e, kind) {
@@ -43,7 +48,7 @@ function makeCard(e, i, opts) {
   let kind = null, fingHtml = '', label = '', outOfRange = false;
   let w = writtenOf(e), wm = e.rest ? null : noteMidi(w);
 
-  if (!e.rest && state.showFing) {
+  if (!e.rest && showsFing()) {
     const res = fingeringFor(ins, wm, { german: state.recorderGerman });
     const r = renderFingering(res);
     kind = fingKind(res);
@@ -53,7 +58,7 @@ function makeCard(e, i, opts) {
   }
   const width = cardWidth(e, kind);
   if (!o.vert) el.style.setProperty('--w', width + 'px');
-  if (!state.showFing || e.rest) el.classList.add('nofing');
+  if (!showsFing() || e.rest) el.classList.add('nofing');
   if (e.rest) el.classList.add('rest');
   if (outOfRange) el.classList.add('out');
 
@@ -62,7 +67,7 @@ function makeCard(e, i, opts) {
   const staff = staffSVG(e.rest ? null : w, e.dur, e.dot, ins.clef, o.vert ? 150 : Math.min(width - 8, 150));
   const lyric = (state.words && state.words[i]) ? esc(state.words[i]) : '';
   el.innerHTML =
-    (state.showFing ? `<div class="fingwrap">${e.rest ? '' : fingHtml}</div>` : '') +
+    (showsFing() ? `<div class="fingwrap">${e.rest ? '' : fingHtml}</div>` : '') +
     `<div class="name">${name}</div>` +
     `<div class="staffwrap">${staff}</div>` +
     `<div class="lyric">${lyric}</div>`;
@@ -176,7 +181,7 @@ const S_HEAD = 13;                    // notehodets avstand fra segmentets venst
 let vY = 0, sX = 0, sSegs = [], beatStart = [], beatTotal = 0;
 /* Alle kortene er like høye. Varigheten leses av notebåndet under, og like
    høye kort gjør at man ser flere av de kommende grepene. */
-function cardH() { return 86 + state.air * 24; }
+function cardH() { return Math.max(44, (86 + state.air * 24) * fingScale()); }
 function ppbS() { return 56 + state.air * 40; }
 
 /* Notebåndet: én sammenhengende notelinje der bredden følger varigheten.
@@ -337,7 +342,7 @@ function updateHeader() {
 function renderLegend() {
   const ins = curInstr();
   const l = $('legend');
-  const chart = ins.fing;
+  const chart = showsFing() ? ins.fing : null;
   let items = '';
   if (chart === 'brass3' || chart === 'brass4' || chart === 'horn_f')
     items = `<span class="pill"><span class="dot on"></span>${esc(T('ui.pressed'))}</span>
@@ -674,7 +679,9 @@ function renderSettings() {
     applyAudioOffset));
   b.appendChild(calibratorRow());
   b.appendChild(rangeRow('ui.air', 0, 1.6, 0.1, state.air, v => Math.round(v * 100) + ' %', v => { state.air = v; saveState(); renderStrip(); go(state.cur, true); }));
-  b.appendChild(switchRow('ui.showFing', null, state.showFing, v => { state.showFing = v; saveState(); rebuildAll(); }));
+  b.appendChild(rangeRow('ui.fingSize', 0, 100, 5, state.fingSize,
+    v => (v === 0 ? T('ui.off') : v + ' %'),
+    v => { state.fingSize = Math.round(v); saveState(); rebuildAll(); syncUrl(); }));
   b.appendChild(switchRow('ui.showBars', null, state.showBars, v => { state.showBars = v; saveState(); rebuildAll(); }));
   b.appendChild(switchRow('ui.showOct', null, state.showOct, v => { state.showOct = v; saveState(); rebuildAll(); }));
 
@@ -857,6 +864,7 @@ bpm=  tempo, 30-240                             k=   transpose everything n semi
 p=    w (default) means the tokens are exactly what the player reads on the chosen instrument.
       p=c means the tokens are concert pitch and get transposed for each instrument.
 w=    optional lyric syllables, one per note, separated by |
+fs=   fingering size in percent, 0-100. 0 shows the notes alone, 40 keeps a small hint
 auto=1 starts playback, met=0 turns the metronome off, tone=0 turns the sound off
 
 Rules to follow:

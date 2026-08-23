@@ -5,11 +5,11 @@ const COOKIE = 'visualnotes';
 const DEFAULTS = {
   lang: 'no', instrId: 'tromp_bb', naming: 'native', pitchMode: 'written', recorderGerman: false,
   bpm: 100, ts: '4/4', upbeat: 0, auto: false, metronome: true, tone: true, countIn: 4,
-  air: 0.6, showFing: true, showBars: true, showOct: true, transpose: 0,
+  air: 0.6, fingSize: 100, showBars: true, showOct: true, transpose: 0,
   dir: 'auto', audioOffset: 0, pRows: 11, pZoom: 0.8, pLand: true,
 };
 const PERSIST = ['lang', 'instrId', 'naming', 'pitchMode', 'recorderGerman', 'bpm', 'auto',
-                 'metronome', 'tone', 'countIn', 'air', 'showFing', 'showBars', 'showOct',
+                 'metronome', 'tone', 'countIn', 'air', 'fingSize', 'showBars', 'showOct',
                  'dir', 'audioOffset', 'pRows', 'pZoom', 'pLand'];
 const state = Object.assign({}, DEFAULTS, {
   title: '', songId: null, sourceText: '', events: [], cur: 0, words: null, parseErrors: [],
@@ -95,6 +95,7 @@ function rebuildAll() {
     state.title = SONG_BY_ID[state.songId].title[state.lang] || SONG_BY_ID[state.songId].title.en;
   }
   state.events = markBars(state.events, state.ts, state.upbeat);
+  document.documentElement.style.setProperty('--fs', fingScale().toFixed(3));
   computeBeatIndex();
   renderStrip();
   renderLegend();
@@ -131,7 +132,8 @@ function applyQuery(q) {
   });
   if (q.count !== undefined) state.countIn = clamp(parseInt(q.count, 10) || 0, 0, 8);
   if (q.air !== undefined) state.air = clamp(parseFloat(q.air), 0, 1.6);
-  if (q.fing !== undefined) state.showFing = q.fing !== '0';
+  if (q.fing !== undefined) state.fingSize = q.fing === '0' ? 0 : 100;   // eldre lenker
+  if (q.fs !== undefined) state.fingSize = clamp(parseInt(q.fs, 10) || 0, 0, 100);
   if (q.bars !== undefined) state.showBars = q.bars !== '0';
   if (q.w) state.words = q.w.split('|').map(x => x.trim());
   if (q.t) state.title = q.t;
@@ -166,6 +168,7 @@ function buildUrl() {
   if (state.bpm !== DEFAULTS.bpm) add('bpm', state.bpm);
   if (state.pitchMode !== 'written') add('p', 'c');
   if (state.dir !== 'auto') add('dir', state.dir);
+  if (state.fingSize !== 100) add('fs', state.fingSize);
   if (state.audioOffset) add('off', state.audioOffset);
   if (state.transpose) add('k', state.transpose);
   if (state.auto !== DEFAULTS.auto) add('auto', state.auto ? 1 : 0);
@@ -266,6 +269,8 @@ function init() {
   if (nav) state.lang = nav;
   const saved = readCookie();
   PERSIST.forEach(k => { if (saved[k] !== undefined) state[k] = saved[k]; });
+  // eldre cookie: grep var av/på, ikke en størrelse
+  if (saved.fingSize === undefined && saved.showFing === false) state.fingSize = 0;
   const q = query();
   const loaded = applyQuery(q);
   if (!loaded) loadSong('lisa');

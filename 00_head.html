@@ -60,7 +60,8 @@
     cursor:pointer;
     transition:transform .18s ease,box-shadow .06s ease,border-color .06s ease;
   }
-  .note .fingwrap{height:clamp(92px,21vh,164px);width:100%;display:flex;align-items:center;justify-content:center}
+  .note .fingwrap{height:calc(clamp(92px,21vh,164px) * var(--fs,1));width:100%;
+    display:flex;align-items:center;justify-content:center}
   .note .fingwrap svg{height:100%;width:auto;max-width:100%}
   .note .fingwrap svg.fing-keys,.note .fingwrap svg.fing-slide{height:auto;width:100%}
   .note.nofing .fingwrap{height:auto}
@@ -95,8 +96,9 @@
   }
   .strip.vert .note.done{opacity:.5}
   .strip.vert .note.current{opacity:1;transform:none;box-shadow:0 0 0 3px var(--gold),0 8px 22px rgba(0,0,0,.45)}
-  .strip.vert .note .fingwrap{flex:0 0 auto;width:auto;height:auto;max-height:86px;max-width:54%}
-  .strip.vert .note .fingwrap svg{height:auto;width:auto;max-height:86px;max-width:100%}
+  .strip.vert .note .fingwrap{flex:0 0 auto;width:auto;height:auto;
+    max-height:calc(86px * var(--fs,1));max-width:54%}
+  .strip.vert .note .fingwrap svg{height:auto;width:auto;max-height:calc(86px * var(--fs,1));max-width:100%}
   .strip.vert .note .name{margin:0 16px;font-size:26px}
   .strip.vert .note .lyric{margin-left:auto;padding-right:4px}
   .strip.vert .note.barstart{border-bottom-color:rgba(28,23,18,.45)}
