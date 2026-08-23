@@ -2305,7 +2305,7 @@ function setupStripDrag(el) {
 /* ---------------- Paneler ---------------- */
 function openSheet(id) { $(id).hidden = false; }
 function closeSheet(id) { $(id).hidden = true; }
-function switchRow(labelKey, subKey, on, onToggle) {
+function switchRow(labelKey, subKey, on, onToggle, visual) {
   const row = document.createElement('div');
   row.className = 'row';
   row.innerHTML = `<label>${esc(T(labelKey))}${subKey ? `<span class="sub">${esc(T(subKey))}</span>` : ''}</label>`;
@@ -2316,11 +2316,12 @@ function switchRow(labelKey, subKey, on, onToggle) {
     const v = !b.classList.contains('on');
     b.classList.toggle('on', v); b.setAttribute('aria-checked', v ? 'true' : 'false');
     onToggle(v);
+    if (visual) peekFlash(row);
   });
   row.appendChild(b);
   return row;
 }
-function segRow(labelKey, options, value, onPick, subKey) {
+function segRow(labelKey, options, value, onPick, subKey, visual) {
   const row = document.createElement('div');
   row.className = 'row';
   row.innerHTML = `<label>${esc(T(labelKey))}` +
@@ -2331,7 +2332,7 @@ function segRow(labelKey, options, value, onPick, subKey) {
     const b = document.createElement('button');
     b.textContent = o.label;
     b.className = o.value === value ? 'on' : '';
-    b.addEventListener('click', () => onPick(o.value));
+    b.addEventListener('click', () => { if (visual) peekFlash(row); onPick(o.value); });
     seg.appendChild(b);
   });
   row.appendChild(seg);
@@ -2371,26 +2372,35 @@ function rangeRow(labelKey, min, max, step, value, fmtFn, onInput, peek, snapTo)
 /* Panelet blir nesten gjennomsiktig mens man drar i en størrelse, så man ser
    det man justerer. Raden man holder i blir stående, ellers ser man ikke tallet.
    Et halvt sekund etter at man slipper, kommer menyen tilbake. */
-let peekTimer = null;
+let peekTimer = null, peekRow = null, peekSheet = null;
+/* Panelet holdes gjennomsiktig så lenge man holder på, og av og til et lite
+   øyeblikk etterpå. Referansen til panelet lagres, for raden kan bli tegnet
+   på nytt under veis — da ville et oppslag gjennom den mistet panelet, og
+   menyen blitt hengende gjennomsiktig. */
+function peekShow(row) {
+  if (row) peekSheet = row.closest('.sheet') || peekSheet;
+  if (!peekSheet) return;
+  clearTimeout(peekTimer);
+  if (peekRow && peekRow !== row) peekRow.classList.remove('peeking');
+  peekRow = row || null;
+  peekSheet.classList.add('peek');
+  if (peekRow) peekRow.classList.add('peeking');
+}
+function peekHide(delay) {
+  clearTimeout(peekTimer);
+  peekTimer = setTimeout(() => {
+    if (peekSheet) peekSheet.classList.remove('peek');
+    if (peekRow) peekRow.classList.remove('peeking');
+    peekRow = null;
+  }, delay);
+}
+/* Et trykk som endrer bildet: vis endringen med en gang, og la menyen
+   komme tilbake 0,7 sekunder etter siste trykk. */
+function peekFlash(row) { peekShow(row); peekHide(700); }
 function attachPeek(row, inp) {
-  const sheet = () => row.closest('.sheet');
   let held = false;
-  const on = () => {
-    const sh = sheet();
-    if (!sh) return;
-    clearTimeout(peekTimer);
-    sh.classList.add('peek');
-    row.classList.add('peeking');
-  };
-  const off = () => {
-    clearTimeout(peekTimer);
-    peekTimer = setTimeout(() => {
-      const sh = sheet();
-      if (!sh) return;
-      sh.classList.remove('peek');
-      row.classList.remove('peeking');
-    }, 500);
-  };
+  const on = () => peekShow(row);
+  const off = () => peekHide(500);
   inp.addEventListener('pointerdown', () => { held = true; on(); });
   inp.addEventListener('input', () => { on(); if (!held) off(); });
   inp.addEventListener('keydown', () => { held = false; on(); });
@@ -2429,6 +2439,7 @@ function renderSettings() {
   });
   famSel.addEventListener('change', () => {
     const f = FAMILY_BY_ID[famSel.value];
+    peekFlash(gRow);
     setInstrument(f.std); renderSettings();
   });
   const varSel = document.createElement('select');
@@ -2439,7 +2450,7 @@ function renderSettings() {
     if (id === ins.id) o.selected = true;
     varSel.appendChild(o);
   });
-  varSel.addEventListener('change', () => { setInstrument(varSel.value); renderSettings(); });
+  varSel.addEventListener('change', () => { peekFlash(gRow); setInstrument(varSel.value); renderSettings(); });
   wrap.appendChild(famSel);
   if (fam.members.length > 1) wrap.appendChild(varSel);
   gRow.appendChild(wrap);
@@ -2448,23 +2459,23 @@ function renderSettings() {
   if (ins.family === 'recorder') {
     b.appendChild(segRow('ui.recorderSystem', [
       { value: false, label: T('ui.baroque') }, { value: true, label: T('ui.german') },
-    ], state.recorderGerman, v => { state.recorderGerman = v; saveState(); rebuildAll(); renderSettings(); }));
+    ], state.recorderGerman, v => { state.recorderGerman = v; saveState(); rebuildAll(); renderSettings(); }, null, true));
   }
   b.appendChild(segRow('ui.direction', [
     { value: 'auto', label: T('ui.dirAuto') },
     { value: 'h', label: T('ui.dirHoriz') },
     { value: 'v', label: T('ui.dirVert') },
   ], state.dir, v => { state.dir = v; saveState(); rebuildAll(); renderSettings(); syncUrl(); },
-     state.dir === 'auto' ? 'ui.dirAutoSub' : null));
+     state.dir === 'auto' ? 'ui.dirAutoSub' : null, true));
 
   b.appendChild(segRow('ui.noteNames', [
     { value: 'native', label: T('ui.nativeNames') }, { value: 'intl', label: T('ui.intlNames') },
-  ], state.naming, v => { state.naming = v; saveState(); rebuildAll(); renderSettings(); }));
+  ], state.naming, v => { state.naming = v; saveState(); rebuildAll(); renderSettings(); }, null, true));
 
   if (ins.letters || ins.semis) {
     b.appendChild(segRow('ui.pitchView', [
       { value: 'written', label: T('ui.writtenPitch') }, { value: 'concert', label: T('ui.concertPitch') },
-    ], state.pitchMode, v => { state.pitchMode = v; saveState(); rebuildAll(); renderSettings(); syncUrl(); }));
+    ], state.pitchMode, v => { state.pitchMode = v; saveState(); rebuildAll(); renderSettings(); syncUrl(); }, null, true));
   }
   b.appendChild(rangeRow('ui.tempo', BPM_MIN, BPM_MAX, 1, state.bpm, v => v + ' BPM', applyTempo));
   b.appendChild(switchRow('ui.autoAdvance', 'ui.autoAdvanceSub', state.auto, v => { state.auto = v; saveState(); syncUrl(); }));
@@ -2486,8 +2497,8 @@ function renderSettings() {
   b.appendChild(rangeRow('ui.noteSize', 0, 200, 1, state.noteSize,
     v => (v === 0 ? T('ui.off') : v + ' %'),
     v => { state.noteSize = Math.round(v); saveState(); rebuildAll(); syncUrl(); }, true, 100));
-  b.appendChild(switchRow('ui.showBars', null, state.showBars, v => { state.showBars = v; saveState(); rebuildAll(); }));
-  b.appendChild(switchRow('ui.showOct', null, state.showOct, v => { state.showOct = v; saveState(); rebuildAll(); }));
+  b.appendChild(switchRow('ui.showBars', null, state.showBars, v => { state.showBars = v; saveState(); rebuildAll(); }, true));
+  b.appendChild(switchRow('ui.showOct', null, state.showOct, v => { state.showOct = v; saveState(); rebuildAll(); }, true));
 
   const tr = document.createElement('div');
   tr.className = 'row';
@@ -2498,6 +2509,7 @@ function renderSettings() {
     btn.textContent = d === 0 ? '0' : (d > 0 ? '+' + d : String(d));
     btn.addEventListener('click', () => {
       stopIfPlaying();
+      peekFlash(tr);
       state.transpose = d === 0 ? 0 : clamp(state.transpose + d, -24, 24);
       state.transposeLocked = d !== 0;
       if (d === 0) autoOctave();

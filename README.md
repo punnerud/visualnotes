@@ -72,7 +72,10 @@ Kortene blir både lavere og smalere med, så flere toner er synlige og notebån
 hvert som eleven trenger grepene mindre — på piano går kortet fra 330 til 166 piksler mellom 100 % og
 30 %. Mens du drar i størrelsen — eller i «Luft mellom notene» — blir panelet nesten gjennomsiktig, så du
 ser hva du justerer. Bare raden du holder i blir stående, så du fortsatt ser tallet, og et halvt sekund
-etter at du slipper kommer menyen tilbake. Verdiene kan deles i lenken med `fs=` og `ns=`, for eksempel
+etter at du slipper kommer menyen tilbake. Det samme skjer når du trykker på noe annet som endrer
+bildet — taktstreker, oktavtall, notenavn, retning, instrument, transponering: endringen skjer med én
+gang, panelet blir gjennomsiktig så du ser den, og menyen kommer tilbake 0,7 sekunder etter siste
+trykk. Trykker du flere ganger på rad, blir den stående gjennomsiktig så du ser hver endring. Verdiene kan deles i lenken med `fs=` og `ns=`, for eksempel
 [`?id=lisa&fs=40`](https://punnerud.github.io/visualnotes/?id=lisa&fs=40) eller
 [`?id=lisa&ns=0`](https://punnerud.github.io/visualnotes/?id=lisa&ns=0).
 
